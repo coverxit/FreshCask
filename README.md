@@ -1,9 +1,9 @@
-FreshDB
+FreshCask
 =======
 
-FreshDB is a Bitcask based lightweight key-value database. 
+FreshCask is a Bitcask based lightweight key-value database. 
 
-Inspired by my friend's nickname, that's reason why it's called "FreshDB".
+Inspired by my friend's nickname, that's reason why it's called "FreshCask".
 
 Using C++ as main developing language, designed for my ~~fxxking~~ annoying data structure curriculum execrise.
 
