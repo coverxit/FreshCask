@@ -1,5 +1,5 @@
 FreshCask
-=======
+=========
 
 FreshCask is a Bitcask based lightweight key-value database. 
 
