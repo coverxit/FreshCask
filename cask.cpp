@@ -5,7 +5,7 @@
 
 #include <iostream>
 #include <chrono>
-using namespace std;
+#include <random>
 
 #include <cstdio>
 #include <stddef.h>
@@ -18,7 +18,7 @@ const uint32_t CurrentMinorVersion = 0;
 
 typedef unsigned char Byte, *BytePtr;
 
-class SmartByteArray 
+class SmartByteArray  // TODO: Convert to std::shared_ptr<BytePtr>
 {
 public:
 	SmartByteArray() : data_(nullptr), size_(0), refCount(new uint32_t(1)) {}
@@ -157,7 +157,8 @@ struct Header
 	uint32_t MagicNumber;
 	uint8_t  MajorVersion;
 	uint8_t  MinorVersion;
-	Byte 	 Flag;
+	uint8_t  Flag;
+    uint8_t  Reserved;
 };
 
 struct Record 
@@ -167,6 +168,7 @@ struct Record
 	SmartByteArray Key;
 	SmartByteArray Value;
 
+	Record() : CRC32(0), TimeStamp(0) {}
 	Record(uint32_t CRC32, uint32_t TimeStamp, SmartByteArray Key, SmartByteArray Value) :
 		CRC32(CRC32), TimeStamp(TimeStamp), Key(Key), Value(Value) {}
 
@@ -258,7 +260,18 @@ private:
 			return Status::OK();
 		}
 
-		Status Read(uint32_t size, SmartByteArray out)
+		Status Tell(uint32_t &out)
+		{
+			if (!IsOpen())
+				return Status::IOError("Bucket::FileManager::Seek()", "File not open");
+
+			if ((out = ftell(fp)) == 0xFFFFFFFF) // ftell returns -1
+				return Status::IOError("Bucket::FileManager::CheckFileValidity()", ErrnoTranslator(errno));
+
+			return Status::OK();
+		}
+
+		Status Read(uint32_t size, SmartByteArray &out)
 		{
 			if (!IsOpen())
 				return Status::IOError("Bucket::FileManager::Read()", "File not open");
@@ -302,23 +315,11 @@ private:
 			header->MajorVersion = CurrentMajorVersion;
 			header->MinorVersion = CurrentMinorVersion;
 			header->Flag = DataFile::ActiveFile;
+            header->Reserved = 0x0;
 
 			Status s = Write(buffer);
 			if (!s.IsOK()) return s.PushSender("Bucket::FileManager::WriteHeader()");
 
-			return Status::OK();
-		}
-
-		Status WriteRecord(DataFile::Record record)
-		{
-			uint32_t bufSize = 4 * sizeof(uint32_t) + record.Key.Size() + record.Value.Size();
-			SmartByteArray buffer(new Byte[bufSize], bufSize);
-			memcpy(buffer.Data(), &record, 4 * sizeof(uint32_t));
-			memcpy(buffer.Data() + 4 * sizeof(uint32_t), record.Key.Data(), record.Key.Size());
-			memcpy(buffer.Data() + 4 * sizeof(uint32_t) + record.Key.Size(), record.Value.Data(), record.Value.Size());
-
-			Status s = Write(buffer);
-			if (!s.IsOK()) return s.PushSender("Bucket::FileManager::WriteRecord()");
 			return Status::OK();
 		}
 
@@ -353,29 +354,56 @@ private:
 			return Status::OK();
 		}
 
-		/*Status ReadRecord(uint32_t offset, uint32_t size, DataFile::Record &out)
+		Status ReadRecord(uint32_t offset, uint32_t size, DataFile::Record &out)
 		{
-			Status s = Seek(offset, SeekDir::Begin);
+			Status s = Seek(offset, Begin);
 			if (!s.IsOK()) return s;
 
-			std::vector<Byte> buffer(size);
-			if (size != fread(&buffer[0], sizeof(Byte), size, fp))
-				return Status::IOError("BucketReader::Read()", ErrnoTranslator(errno));
+			SmartByteArray buffer(new Byte[size], size);
+			s = Read(size, buffer);
+			if (!s.IsOK()) return s.PushSender("Bucket::FileManager::ReadRecord()");
 
-			memcpy(&out, &buffer[0], 4 * sizeof(uint32_t));
+			memcpy(&out, buffer.Data(), 2 * sizeof(uint32_t));
 
 			uint32_t SizeOfKey, SizeOfValue;
-			memcpy(&SizeOfKey, &buffer[4 * sizeof(uint32_t)], sizeof(uint32_t));
-			memcpy(&SizeOfValue, &buffer[4 * sizeof(uint32_t) + uint32_t + SizeOfKey], sizeof(uint32_t));
+			memcpy(&SizeOfKey, buffer.Data()+ 2 * sizeof(uint32_t), sizeof(uint32_t));
+			memcpy(&SizeOfValue, buffer.Data() + 3 * sizeof(uint32_t) + SizeOfKey, sizeof(uint32_t));
 
 			out.Key = SmartByteArray(new Byte[SizeOfKey], SizeOfKey);
-			memcpy(out.Key.data(), &buffer[4 * sizeof(uint32_t) + uint32_t], SizeOfKey);
+			memcpy(out.Key.Data(), buffer.Data() + 4 * sizeof(uint32_t), SizeOfKey);
 
 			out.Value = SmartByteArray(new Byte[SizeOfValue], SizeOfValue);
-			memcpy(out.Value.data(), &buffer[4 * sizeof(uint32_t) + uint32_t + SizeOfKey + uint32_t], SizeOfValue);
+			memcpy(out.Value.Data(), buffer.Data() + 4 * sizeof(uint32_t) + SizeOfKey, SizeOfValue);
 
 			return Status::OK();
-		}*/
+		}
+
+		Status WriteRecord(DataFile::Record record, uint32_t *outOffset = nullptr)
+		{
+			uint32_t bufSize = 2 * sizeof(uint32_t) + record.Key.Size() + record.Value.Size();
+			SmartByteArray buffer(new Byte[bufSize], bufSize);
+			memcpy(buffer.Data(), &record, 2 * sizeof(uint32_t));
+            
+            uint32_t SizeOfKey = record.Key.Size();
+            memcpy(buffer.Data() + 2 * sizeof(uint32_t), &SizeOfKey, sizeof(uint32_t));
+            
+            uint32_t SizeOfValue = record.Value.Size();
+            memcpy(buffer.Data() + 3 * sizeof(uint32_t), &SizeOfValue, sizeof(uint32_t));
+            
+			memcpy(buffer.Data() + 4 * sizeof(uint32_t), record.Key.Data(), record.Key.Size());
+			memcpy(buffer.Data() + 4 * sizeof(uint32_t) + record.Key.Size(), record.Value.Data(), record.Value.Size());
+
+			Status s = Write(buffer);
+			if (!s.IsOK()) return s.PushSender("Bucket::FileManager::WriteRecord()");
+
+			if (outOffset != nullptr)
+			{
+				s = Tell(*outOffset);
+				if (!s.IsOK()) return s.PushSender("Bucket::FileManager::WriteRecord()");
+			}
+
+			return Status::OK();
+		}
 
 	protected:
 		FilePtr fp;
@@ -398,16 +426,36 @@ public:
 
 	Status Close() { return fileMan.Close().PushSender("Bucket::Close()"); }
 
-	Status Get(SmartByteArray key, SmartByteArray out) { return Status::OK(); }
+	Status Get(SmartByteArray key, SmartByteArray &out) 
+	{
+		HashFile::HashType hash;
+		Status s = HashFile::HashFunction(key, hash);
+		if (!s.IsOK()) return s.PushSender("Bucket::Get()");
+		
+		HashFile::HashMap::iterator it = hashMap.find(hash);
+		if (it == hashMap.end())
+			return Status::NotFound("Bucket::Get()", "Key doesn't exist");
+
+		DataFile::Record dataRec;
+		s = fileMan.ReadRecord(it->second.OffsetOfValue, it->second.SizeOfValue, dataRec); 
+		if (!s.IsOK()) return s.PushSender("Bucket::Get()");
+
+		out = dataRec.Value;
+		return Status::OK();
+	}
 	
 	Status Put(SmartByteArray key, SmartByteArray value) 
 	{
 		HashFile::HashType hash;
 		Status s = HashFile::HashFunction(key, hash);
 		if (!s.IsOK()) return s.PushSender("Bucket::Put()");
-		hashMap[hash] = HashFile::Record(0, value.Size(), 0, 0);
 
-		return fileMan.WriteRecord(DataFile::Record(0, 0, key, value)).PushSender("Bucket::Put()");
+		HashFile::Record hashRec(0, value.Size(), 0xFFFFFFFF, 0);
+		s = fileMan.WriteRecord(DataFile::Record(0, 0, key, value), &hashRec.OffsetOfValue);
+		if (!s.IsOK()) return s.PushSender("Bucket::Put()");
+		
+		hashMap[hash] = hashRec;
+		return Status::OK();
 	}
 
 private:
@@ -424,16 +472,33 @@ int main()
 
 	if (!s.IsOK()) std::cout << s.ToString() << std::endl;
 
-	FreshCask::SmartByteArray Key(new FreshCask::Byte[4], 4);
-	FreshCask::SmartByteArray Value(new FreshCask::Byte[1024], 1024);
+    FreshCask::SmartByteArray Key(new FreshCask::Byte[sizeof(uint32_t)], sizeof(uint32_t));
+    FreshCask::SmartByteArray Value(new FreshCask::Byte[1024], 1024);
+    
+	std::chrono::high_resolution_clock::time_point start, end;
+	uint64_t duration;
 	
-	std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-	for (int i = 0; i < 2000000; i++)
-	{	
+	start = std::chrono::high_resolution_clock::now();
+	for (int i = 0; i < 1000000; i++)
+	{
+		memcpy(Key.Data(), &i, sizeof(uint32_t));
+		memcpy(Value.Data(), &i, 1024);
 		bc.Put(Key, Value);
 	}
+	end = std::chrono::high_resolution_clock::now();
+	duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+	std::cout << "1,000,000 Times: Put 1KB data done in " << duration << " ms" << std::endl;
 
-	std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-	uint64_t duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-	std::cout << "done in " << duration << " ms" << std::endl;
+	std::mt19937 gen(FreshCask::HashFile::HashSeed);
+	start = std::chrono::high_resolution_clock::now();
+	for (int i = 0; i < 1000000; i++)
+	{
+		memcpy(Key.Data(), &i, sizeof(uint32_t));
+		bc.Get(Key, Value);
+
+		//std::cout << "K: " << std::hex << Key.ToString() << ", V: " << std::hex << Value.ToString().substr(0, 10) << std::endl;
+	}
+	end = std::chrono::high_resolution_clock::now();
+	duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+	std::cout << "1,000,000 Times: Random Get in " << duration << " ms" << std::endl;
 }
