@@ -243,7 +243,7 @@ namespace FreshCask
 		DataFileReader reader;
 		DataFileWriter writer;
 		std::string filePath;
-		DataFile::Flag fileFlag;
+		uint8_t fileFlag;
 	};
 } // namespace FreshCask
 #endif // __CORE_STORAGEENGINE_HPP__

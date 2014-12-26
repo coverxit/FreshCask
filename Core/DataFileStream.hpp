@@ -63,7 +63,7 @@ namespace FreshCask
 			if (!IsOpen())
 				return Status::IOError("DataFileReader::Read()", "File not open");
 
-			std::lock_guard<std::mutex> lock(readMutex);
+			//std::lock_guard<std::mutex> lock(readMutex);
 #ifdef WIN32
 			if (INVALID_SET_FILE_POINTER == SetFilePointer(fileHandle, offset, NULL, FILE_BEGIN))
 				return Status::IOError("DataFileReader::Read()", ErrnoTranslator(GetLastError()));
@@ -79,7 +79,7 @@ namespace FreshCask
 		{
 			return Status::IOError("DataFileReader::ReadNext()", "File not open");
 
-			std::lock_guard<std::mutex> lock(readMutex);
+			//std::lock_guard<std::mutex> lock(readMutex);
 #ifdef WIN32
 			DWORD bytesReaded = 0;
 			if (FALSE == ReadFile(fileHandle, out.Data(), out.Size(), &bytesReaded, NULL) || bytesReaded != out.Size())
@@ -89,9 +89,7 @@ namespace FreshCask
 		}
 
 	private:
-#ifdef WIN32
-		std::mutex readMutex;
-#endif
+		//std::mutex readMutex;
 	};
 
 	class DataFileWriter : public DataFileStream
