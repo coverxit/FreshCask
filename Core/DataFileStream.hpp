@@ -39,7 +39,7 @@ namespace FreshCask
 				GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
 				NULL, OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL)
 				))
-				return Status::IOError("DataFileReader::Open()", ErrnoTranslator(GetLastError()));
+				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "DataFileReader::Open()");
 #endif
 			return Status::OK();
 		}
@@ -54,36 +54,38 @@ namespace FreshCask
 #endif
 			}
 
-
 			return Status::OK();
 		}
 
 		Status Read(uint32_t offset, SmartByteArray &out)
 		{
 			if (!IsOpen())
-				return Status::IOError("DataFileReader::Read()", "File not open");
+				RET_BY_SENDER(Status::IOError("File not open"), "DataFileReader::Read()");
 
 			//std::lock_guard<std::mutex> lock(readMutex);
 #ifdef WIN32
 			if (INVALID_SET_FILE_POINTER == SetFilePointer(fileHandle, offset, NULL, FILE_BEGIN))
-				return Status::IOError("DataFileReader::Read()", ErrnoTranslator(GetLastError()));
+				RET_BY_SENDER(Status::IOError("Failed to SetFilePointer"), "DataFileReader::Read()");
 
 			DWORD bytesReaded = 0;
-			if (FALSE == ReadFile(fileHandle, out.Data(), out.Size(), &bytesReaded, NULL) || bytesReaded != out.Size())
-				return Status::IOError("DataFileReader::Read()", ErrnoTranslator(GetLastError()));
+			if (FALSE == ReadFile(fileHandle, out.Data(), out.Size(), &bytesReaded, NULL))
+				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "DataFileReader::Read()");
+			else if (bytesReaded != out.Size())
+				RET_BY_SENDER(Status::IOError("Bytes readed is less than out.Size()."), "DataFileReader::Read()");
 #endif
 			return Status::OK();
 		}
 
 		Status ReadNext(SmartByteArray &out)
 		{
-			return Status::IOError("DataFileReader::ReadNext()", "File not open");
+			if (!IsOpen())
+				RET_BY_SENDER(Status::IOError("File not open"), "DataFileReader::ReadNext()");
 
 			//std::lock_guard<std::mutex> lock(readMutex);
 #ifdef WIN32
 			DWORD bytesReaded = 0;
 			if (FALSE == ReadFile(fileHandle, out.Data(), out.Size(), &bytesReaded, NULL) || bytesReaded != out.Size())
-				return Status::IOError("DataFileReader::ReadNext()", ErrnoTranslator(GetLastError()));
+				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "DataFileReader::ReadNext()");
 #endif
 			return Status::OK();
 		}
@@ -95,7 +97,7 @@ namespace FreshCask
 	class DataFileWriter : public DataFileStream
 	{
 	public:
-		DataFileWriter(std::string filePath) : DataFileWriter(filePath) {}
+		DataFileWriter(std::string filePath) : DataFileStream(filePath) {}
 		~DataFileWriter() { Close(); }
 
 		Status Open(bool truncate = false)
@@ -105,10 +107,10 @@ namespace FreshCask
 				GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
 				NULL, truncate ? CREATE_ALWAYS : OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL)
 				))
-				return Status::IOError("DataFileWriter::Open()", ErrnoTranslator(GetLastError()));
+				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "DataFileWriter::Open()");
 
 			if (!truncate && INVALID_SET_FILE_POINTER == SetFilePointer(fileHandle, 0, NULL, FILE_END))
-				return Status::IOError("DataFileWriter::Open()", ErrnoTranslator(GetLastError()));
+				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "DataFileWriter::Open()");
 #endif
 			return Status::OK();
 		}
@@ -125,20 +127,38 @@ namespace FreshCask
 			return Status::OK();
 		}
 
-		Status Write(SmartByteArray bar, uint32_t *curOffset = nullptr)
+		Status Write(SmartByteArray bar, uint32_t *offsetOut = nullptr)
 		{
 			if (!IsOpen())
-				return Status::IOError("DataFileWriter::Write()", "File not open");
+				RET_BY_SENDER(Status::IOError("File not open"), "DataFileWriter::Write()");
 
 			std::lock_guard<std::mutex> lock(writeMutex);
+			uint32_t curOffset;
+			
+			if (INVALID_SET_FILE_POINTER == (curOffset = SetFilePointer(fileHandle, NULL, NULL, FILE_CURRENT))) // query current offset
+				RET_BY_SENDER(Status::IOError("Failed to SetFilePointer"), "DataFileWriter::Writer()");
+
+			if (curOffset + bar.Size() > DataFile::MaxFileSize)
+				RET_BY_SENDER(Status::NoFreeSpace("MaxFileSize reached"), "DataFileWriter::Writer()");
+
 #ifdef WIN32
 			DWORD bytesWritten = 0;
 			if (FALSE == WriteFile(fileHandle, bar.Data(), bar.Size(), &bytesWritten, NULL) || bytesWritten != bar.Size())
-				return Status::IOError("DataFileWriter::Write()", ErrnoTranslator(GetLastError()));
+				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "DataFileWriter::Write()");
 
-			if (curOffset && INVALID_SET_FILE_POINTER == (*curOffset = SetFilePointer(fileHandle, NULL, NULL, FILE_CURRENT))) // to query current offset
-				return Status::IOError("DataFileWriter::Write()", ErrnoTranslator(GetLastError()));
+			if (offsetOut) *offsetOut = curOffset;
 #endif
+			return Status::OK();
+		}
+
+		Status GetOffset(uint32_t &out)
+		{
+			if (!IsOpen())
+				RET_BY_SENDER(Status::IOError("File not open"), "DataFileWriter::GetOffset()");
+
+			if (INVALID_SET_FILE_POINTER == (out = SetFilePointer(fileHandle, NULL, NULL, FILE_CURRENT))) // query current offset
+				RET_BY_SENDER(Status::IOError("Failed to SetFilePointer"), "DataFileWriter::GetOffset()");
+
 			return Status::OK();
 		}
 

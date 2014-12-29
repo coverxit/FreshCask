@@ -4,7 +4,7 @@
 #include <memory>
 namespace FreshCask {
 
-	class SmartByteArray  // TODO: Convert to std::shared_ptr<BytePtr>
+	class SmartByteArray  // TODO: Convert to std::shared_ptr<Byte>
 	{
 	public:
 		SmartByteArray() : data(nullptr), size(0) {}

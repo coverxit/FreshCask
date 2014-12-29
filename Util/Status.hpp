@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <vector>
+#include <tuple>
 #include <system_error>
 
 #ifdef WIN32
@@ -37,14 +38,28 @@ namespace FreshCask
 		{
 			return Status(cNotSupported, message1, message2);
 		}
+		static Status NoFreeSpace(const std::string& message1, const std::string& message2 = "")
+		{
+			return Status(cNoFreeSpace, message1, message2);
+		}
+		static Status Corrupted(const std::string& message1, const std::string& message2 = "")
+		{
+			return Status(cCorrupted, message1, message2);
+		}
 
-		Status PushSender(const std::string& sender) { traceback.push_back(sender); return *this; }
+		Status PushSender(const std::string& caller, const char* file, const int line) 
+		{ 
+			traceback.push_back(make_tuple(caller, file, line));
+			return *this;
+		}
 
 		bool IsOK() const { return code == cOK; }
 		bool IsNotFound() const { return code == cNotFound; }
 		bool IsInvaildArgument() const { return code == cInvalidArgument; }
 		bool IsIOError() const { return code == cIOError; }
 		bool IsNotSupported() const { return code == cNotSupported; }
+		bool IsNoFreeSpace() const { return code == cNoFreeSpace; }
+		bool IsCorrupted() const { return code == cCorrupted; }
 
 		std::string ToString()
 		{
@@ -71,19 +86,32 @@ namespace FreshCask
 				result << "Not Supported: ";
 				break;
 
+			case cNoFreeSpace:
+				result << "No Free Space: ";
+				break;
+
+			case cCorrupted:
+				result << "Corrupted: ";
+				break;
+
 			default:
 				result << "Unkown code (" << code << "): ";
 				break;
 			}
 
 			result << message1;
-			if (message2.length() > 0) result << " - " << message2 << std::endl;
+			if (message2.length() > 0) result << " - " << message2;
+			result << std::endl;
 
 			if (traceback.size() > 0)
 			{
-				result << "Traceback:" << std::endl;
-				for (std::string& sender : traceback)
-					result << "- " << sender << std::endl;
+				result << std::endl << "Traceback:" << std::endl;
+				for (auto sender : traceback)
+				{
+					std::string& file = std::get<1>(sender);
+					result << "- " << std::get<0>(sender) << " in " << file.substr(file.find_last_of('\\') + 1);
+					result << " at line " << std::get<2>(sender) << std::endl;
+				}
 			}
 
 			return result.str();
@@ -92,7 +120,7 @@ namespace FreshCask
 	private:
 		int code;
 		std::string message1, message2;
-		std::vector<std::string> traceback;
+		std::vector<std::tuple<std::string, std::string, int>> traceback;
 
 		enum Code
 		{
@@ -100,7 +128,9 @@ namespace FreshCask
 			cNotFound = 1,
 			cInvalidArgument = 2,
 			cIOError = 3,
-			cNotSupported = 4
+			cNotSupported = 4,
+			cNoFreeSpace = 5,
+			cCorrupted = 6,
 		};
 	};
 
@@ -143,11 +173,11 @@ namespace FreshCask
 
 } // namespace FreshCask
 
+#define RET_BY_SENDER(exec, sender) return exec.PushSender(sender, __FILE__, __LINE__)
+
 #define RET_IFNOT_OK(exec, sender)	{					\
 			Status s = exec;							\
-			if (!s.IsOK()) return s.PushSender(sender);	\
+			if (!s.IsOK()) RET_BY_SENDER(s, sender);	\
 		}
-
-#define RET_BY_SENDER(exec, sender) return exec.PushSender(sender);
 
 #endif // __UTIL_STATUS_HPP__

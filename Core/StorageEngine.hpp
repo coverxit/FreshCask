@@ -5,6 +5,8 @@
 #include <Core/HashFile.h>
 #include <Core/DataFileStream.hpp>
 
+#include <Util/Misc.hpp>
+
 namespace FreshCask
 {
 	/*class MappingEngine
@@ -112,7 +114,7 @@ namespace FreshCask
 	class StorageEngine
 	{
 	public:
-		StorageEngine(std::string filePath) : filePath(filePath), reader(filePath), writer(filePath), fileFlag(DataFile::Flag::ActiveFile) {}
+		StorageEngine(std::string filePath) : filePath(filePath), reader(filePath), writer(filePath), fileId(-1), fileFlag(DataFile::Flag::ActiveFile) {}
 		~StorageEngine() { Close(); }
 
 		bool IsOpen() 
@@ -133,7 +135,7 @@ namespace FreshCask
 		Status Open()
 		{
 			if (!IsFileExist(filePath))
-				return Status::NotFound("StorageEngine::Open()", "File doesn't exist.");
+				RET_BY_SENDER(Status::NotFound("File doesn't exist."), "StorageEngine::Open()");
 
 			RET_IFNOT_OK(reader.Open(), "StorageEngine::Open()");
 			
@@ -144,15 +146,16 @@ namespace FreshCask
 
 				DataFile::Header *header = reinterpret_cast<DataFile::Header*>(buffer.Data());
 				if (header->MagicNumber != DataFile::DefaultMagicNumber)
-					return Status::InvalidArgument("StorageEngine::CheckHeader()", "Incorrect magic number");
+					RET_BY_SENDER(Status::InvalidArgument("Incorrect magic number"), "StorageEngine::CheckHeader()");
 				if (header->MajorVersion > CurrentMajorVersion)
-					return Status::NotSupported("StorageEngine::CheckHeader()", "DataFile not supported");
+					RET_BY_SENDER(Status::NotSupported("DataFile not supported"), "StorageEngine::CheckHeader()");
 				else if (header->MinorVersion > CurrentMinorVersion)
-					return Status::NotSupported("StorageEngine::CheckHeader()", "DataFile not supported");
-				if (header->Flag < DataFile::Flag::OlderFile && header->Flag > DataFile::Flag::ActiveFile)
-					return Status::NotSupported("StorageEngine::CheckHeader()", "Invalid flag.");
+					RET_BY_SENDER(Status::NotSupported("DataFile not supported"), "StorageEngine::CheckHeader()");
+				/*if (header->Flag < DataFile::Flag::OlderFile && header->Flag > DataFile::Flag::ActiveFile)
+					return Status::NotSupported("StorageEngine::CheckHeader()", "Invalid flag.");*/
 
 				fileFlag = header->Flag;
+				fileId = header->FileId;
 				return Status::OK();
 			};
 
@@ -184,59 +187,99 @@ namespace FreshCask
 			else return s; // other status*/
 		}
 
-		Status Create()
+		Status Create(uint32_t _fileId)
 		{
 			RET_IFNOT_OK(writer.Open(true), "StorageEngine::Open()");
 
 			// writer header
-			SmartByteArray buffer(new Byte[sizeof(DataFile::Header)], sizeof(DataFile::Header));
+			SmartByteArray buffer(sizeof(DataFile::Header));
 			DataFile::Header *header = reinterpret_cast<DataFile::Header*>(buffer.Data());
 			header->MagicNumber = DataFile::DefaultMagicNumber;
 			header->MajorVersion = CurrentMajorVersion;
 			header->MinorVersion = CurrentMinorVersion;
 			header->Flag = DataFile::Flag::ActiveFile;
-			header->Reserved = 0x0;
+			header->FileId = _fileId;
+			header->Reserved1 = 0x0;
+			header->Reserved2 = 0x0;
 
 			RET_IFNOT_OK(writer.Write(buffer), "StorageEngine::Open()");
 			RET_IFNOT_OK(reader.Open(), "StorageEngine::Open()");
 
+			fileFlag = DataFile::Flag::ActiveFile;
+			fileId = _fileId;
 			return Status::OK();
 		}
 
 		Status Close()
 		{
 			if (!IsOpen())
-				return Status::IOError("StorageEngine::Close()", "File not open");
+				RET_BY_SENDER(Status::NotFound("File not open."), "StorageEngine::Close()");
 
 			reader.Close(); writer.Close();
 			return Status::OK();
 		}
 
-		Status ReadRecord(uint32_t offset, DataFile::Record &out)
+		Status ReadRecord(HashFile::Record hfRec, DataFile::Record &dfRecOut)
 		{
-			SmartByteArray buffer((BytePtr) &out.Header, sizeof(DataFile::RecordHeader));
-			RET_IFNOT_OK(reader.Read(offset, buffer), "StorageEngine::ReadRecord()");
+			SmartByteArray header(sizeof(dfRecOut.CRC32) + sizeof(DataFile::RecordHeader));
+			RET_IFNOT_OK(reader.Read(hfRec.OffsetOfRecord, header), "StorageEngine::ReadRecord()");
 
-			out.Key = SmartByteArray(out.Header.SizeOfKey);
-			RET_IFNOT_OK(reader.ReadNext(out.Key), "StorageEngine::ReadRecord()");
+			memcpy(&dfRecOut.CRC32, header.Data(), sizeof(dfRecOut.CRC32));
+			memcpy(&dfRecOut.Header, header.Data() + sizeof(dfRecOut.CRC32), sizeof(DataFile::RecordHeader));
 
-			out.Value = SmartByteArray(out.Header.SizeOfValue);
-			RET_IFNOT_OK(reader.ReadNext(out.Value), "StorageEngine::ReadRecord()");
+			dfRecOut.Key = SmartByteArray(dfRecOut.Header.SizeOfKey);
+
+			RET_IFNOT_OK(reader.ReadNext(dfRecOut.Key), "StorageEngine::ReadRecord()");
+
+			dfRecOut.Value = SmartByteArray(dfRecOut.Header.SizeOfValue);
+			RET_IFNOT_OK(reader.ReadNext(dfRecOut.Value), "StorageEngine::ReadRecord()");
+
+			uint32_t CRC32 = CRC32::CalcDataFileRecord(dfRecOut);
+			if (dfRecOut.CRC32 != CRC32) RET_BY_SENDER(Status::Corrupted("CRC32 checksum incorrect"), "StorageEngine::ReadRecord()");
 
 			return Status::OK();
 		}
 
 		Status WriteRecord(DataFile::Record dfRec, HashFile::Record &hfRecOut)
 		{
-			dfRec.Header.CRC32 = -1; // TODO
+			if (fileFlag & DataFile::Flag::OlderFile)
+				RET_BY_SENDER(Status::NoFreeSpace("Current data file is older file."), "StorageEngine::WriteRecord()");
+
+			uint32_t curOffset;
+			RET_IFNOT_OK(writer.GetOffset(curOffset), "StorageEngine::WriteRecord()");
+
+			if (curOffset + dfRec.GetSize() > DataFile::MaxFileSize)
+			{
+				// TODO: Write file header
+				fileFlag = DataFile::Flag::OlderFile;
+				RET_BY_SENDER(Status::NoFreeSpace("MaxFileSize reached."), "StorageEngine::WriteRecord()");
+			}
+
 			hfRecOut.TimeStamp = dfRec.Header.TimeStamp = GetTimeStamp();
+			dfRec.CRC32 = CRC32::CalcDataFileRecord(dfRec);
 
-			RET_IFNOT_OK(writer.Write(SmartByteArray((BytePtr)&dfRec.Header, sizeof(DataFile::RecordHeader))), "StorageEngine::WriteRecord()");
+			SmartByteArray header(sizeof(dfRec.CRC32) + sizeof(DataFile::RecordHeader));
+			memcpy(header.Data(), &dfRec.CRC32, sizeof(dfRec.CRC32));
+			memcpy(header.Data() + sizeof(dfRec.CRC32), &dfRec.Header, sizeof(DataFile::RecordHeader));
+
+			RET_IFNOT_OK(writer.Write(header, &hfRecOut.OffsetOfRecord), "StorageEngine::WriteRecord()");
 			RET_IFNOT_OK(writer.Write(dfRec.Key), "StorageEngine::WriteRecord()");
-			RET_IFNOT_OK(writer.Write(dfRec.Value, &hfRecOut.OffsetOfValue), "StorageEngine::WriteRecord()");
+			RET_IFNOT_OK(writer.Write(dfRec.Value), "StorageEngine::WriteRecord()");
 
-			hfRecOut.DataFileId = -1; //TODO
+			hfRecOut.DataFileId = fileId;
 			return Status::OK();
+		}
+
+		uint32_t GetFileId() 
+		{
+			if (!IsOpen()) return -1;
+			else return fileId;
+		}
+
+		uint8_t GetFileFlag()
+		{
+			if (!IsOpen()) return -1;
+			else return fileFlag;
 		}
 
 	protected:
@@ -244,6 +287,7 @@ namespace FreshCask
 		DataFileWriter writer;
 		std::string filePath;
 		uint8_t fileFlag;
+		uint32_t fileId;
 	};
 } // namespace FreshCask
 #endif // __CORE_STORAGEENGINE_HPP__
