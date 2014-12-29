@@ -20,15 +20,11 @@ namespace FreshCask
 		{
 			enginePool = std::shared_ptr<StorageEnginePool>(new StorageEnginePool(bucketPath));
 			RET_BY_SENDER(enginePool->Open(), "BucketManager::Open()");
-//			RET_BY_SENDER(storeEngine.Open(filePath, DataFile::ActiveFile), "Bucket::Open()");
-//			return Status::OK();
 		}
 
 		Status Close() 
 		{ 
 			RET_BY_SENDER(enginePool->Close(), "BucketManager::Close()");
-//			RET_BY_SENDER(storeEngine.Close(), "Bucket::Close()"); 
-//			return Status::OK();
 		}
 
 		Status Get(SmartByteArray key, SmartByteArray &out)
@@ -41,12 +37,11 @@ namespace FreshCask
 				RET_BY_SENDER(Status::NotFound("Key doesn't exist"), "BucketManager::Get()");
 
 			DataFile::Record dataRec;
-			RET_IFNOT_OK(enginePool->ReadRecord(it->second, dataRec), "BucketManager::Get()");
-//			RET_IFNOT_OK(storeEngine.ReadRecord(it->second.OffsetOfValue, dataRec), "Bucket::Get()");
+			RET_IFNOT_OK(enginePool->ReadRecord(it->second.second, dataRec), "BucketManager::Get()");
 			out = dataRec.Value;
 			return Status::OK();
 		}
-
+		
 		Status Put(SmartByteArray key, SmartByteArray &value)
 		{
 			HashFile::HashType hash;
@@ -54,9 +49,32 @@ namespace FreshCask
 
 			HashFile::Record hashRec;
 			RET_IFNOT_OK(enginePool->WriteRecord(DataFile::Record(key, value), hashRec), "BucketManager::Put()");
-//			RET_IFNOT_OK(storeEngine.WriteRecord(DataFile::Record(key, value), hashRec), "Bucket::Put()");
 			
-			hashMap[hash] = hashRec;
+			hashMap[hash] = std::pair<SmartByteArray, HashFile::Record>(key, hashRec);
+			return Status::OK();
+		}
+
+		Status Delete(SmartByteArray key)
+		{
+			HashFile::HashType hash;
+			RET_IFNOT_OK(HashFile::HashFunction(key, hash), "BucketManager::Delete()");
+
+			HashFile::HashMap::iterator it = hashMap.find(hash);
+			if (it == hashMap.end())
+				RET_BY_SENDER(Status::NotFound("Key doesn't exist"), "BucketManager::Delete()");
+			hashMap.erase(it);
+
+			RET_BY_SENDER(Put(key, SmartByteArray::Null()), "BucketManager::Delete()");
+		}
+
+		Status Enumerate(std::function<Status(SmartByteArray, SmartByteArray&)> func)
+		{
+			for (auto& item : hashMap)
+			{
+				SmartByteArray value;
+				RET_IFNOT_OK(Get(item.second.first, value), "BucketManager::Enumerate()");
+				RET_IFNOT_OK(func(item.second.first, value), "BucketManager::Enumerate()");
+			}
 			return Status::OK();
 		}
 

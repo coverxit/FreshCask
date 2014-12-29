@@ -22,8 +22,7 @@ namespace FreshCask
 			uint8_t  MinorVersion;
 			uint32_t FileId;
 			uint8_t  Flag;
-			uint8_t  Reserved1;
-			uint8_t  Reserved2;
+			uint16_t  Reserved;
 		};
 
 		struct RecordHeader
@@ -46,7 +45,7 @@ namespace FreshCask
 
 			Record() {}
 			Record(SmartByteArray Key, SmartByteArray Value) : CRC32(-1), Key(Key), Value(Value), Header(Key.Size(), Value.Size()) {}
-			uint32_t GetSize() { return sizeof(CRC32) + sizeof(Header) + Key.Size() + Value.Size(); }
+			uint32_t GetSize() { return sizeof(CRC32) + sizeof(Header) + Key.Size() + Value.Size() > 0 ? Value.Size() : 0; }
 		};
 	} // namespace DataFile
 } // namespace FreshCask

@@ -31,17 +31,15 @@ int main()
 	duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 	std::cout << "10,000 Times: Put 1KB data done in " << duration << " ms" << std::endl;
 
-	std::mt19937 gen(FreshCask::HashFile::HashSeed);
+	//std::mt19937 gen(FreshCask::HashFile::HashSeed);
 	start = std::chrono::high_resolution_clock::now();
-	FreshCask::SmartByteArray Key("1");
-	for (int i = 0; i < 10000; i++)
-	{
-		bc.Get(Key, Value);
-		//std::cout << "K: " << stream.str() << ", V: " << Value.ToString().substr(0, 10) << std::endl;
-	}
+	bc.Enumerate([](FreshCask::SmartByteArray key, FreshCask::SmartByteArray &value) -> FreshCask::Status {
+		//std::cout << "Key: " << key.ToString() << std::endl;
+		return FreshCask::Status::OK();
+	});
 	end = std::chrono::high_resolution_clock::now();
 	duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-	std::cout << "10,000 Times: Random Get in " << duration << " ms" << std::endl;
+	std::cout << "Enumerate 10,000 pairs in " << duration << " ms" << std::endl;
 
 	std::cin.sync(); std::cin.get();
 	return 0;

@@ -163,28 +163,6 @@ namespace FreshCask
 			RET_IFNOT_OK(writer.Open(), "StorageEngine::Open()");
 
 			return Status::OK();
-			/*Status s = headerChecker();
-			if (s.IsOK()) 
-			{ 
-				RET_IFNOT_OK(writer.Open(), "StorageEngine::Open()");
-				return Status::OK();
-			}
-			else if (s.IsInvaildArgument()) // magicnumber incorrect
-			{
-
-				RET_IFNOT_OK(writer.Open(filePath, true), "StorageEngine::Open()");
-
-				SmartByteArray buffer(new Byte[sizeof(DataFile::Header)], sizeof(DataFile::Header));
-				DataFile::Header *header = reinterpret_cast<DataFile::Header*>(buffer.Data());
-				header->MagicNumber = DataFile::DefaultMagicNumber;
-				header->MajorVersion = CurrentMajorVersion;
-				header->MinorVersion = CurrentMinorVersion;
-				header->Flag = DataFile::ActiveFile;
-				header->Reserved = 0x0;
-
-				RET_IFNOT_OK(writer.Write(buffer), "StorageEngine::Open()");
-			}
-			else return s; // other status*/
 		}
 
 		Status Create(uint32_t _fileId)
@@ -199,10 +177,9 @@ namespace FreshCask
 			header->MinorVersion = CurrentMinorVersion;
 			header->Flag = DataFile::Flag::ActiveFile;
 			header->FileId = _fileId;
-			header->Reserved1 = 0x0;
-			header->Reserved2 = 0x0;
+			header->Reserved = 0x0;
 
-			RET_IFNOT_OK(writer.Write(buffer), "StorageEngine::Open()");
+			RET_IFNOT_OK(writer.WriteNext(buffer), "StorageEngine::Open()");
 			RET_IFNOT_OK(reader.Open(), "StorageEngine::Open()");
 
 			fileFlag = DataFile::Flag::ActiveFile;
@@ -252,6 +229,8 @@ namespace FreshCask
 			{
 				// TODO: Write file header
 				fileFlag = DataFile::Flag::OlderFile;
+				RET_IFNOT_OK(writer.Write(offsetof(DataFile::Header, Flag), SmartByteArray(&fileFlag, sizeof(fileFlag))), "StorageEngine::WriteRecord()");
+
 				RET_BY_SENDER(Status::NoFreeSpace("MaxFileSize reached."), "StorageEngine::WriteRecord()");
 			}
 
@@ -262,9 +241,9 @@ namespace FreshCask
 			memcpy(header.Data(), &dfRec.CRC32, sizeof(dfRec.CRC32));
 			memcpy(header.Data() + sizeof(dfRec.CRC32), &dfRec.Header, sizeof(DataFile::RecordHeader));
 
-			RET_IFNOT_OK(writer.Write(header, &hfRecOut.OffsetOfRecord), "StorageEngine::WriteRecord()");
-			RET_IFNOT_OK(writer.Write(dfRec.Key), "StorageEngine::WriteRecord()");
-			RET_IFNOT_OK(writer.Write(dfRec.Value), "StorageEngine::WriteRecord()");
+			RET_IFNOT_OK(writer.WriteNext(header, &hfRecOut.OffsetOfRecord), "StorageEngine::WriteRecord()");
+			RET_IFNOT_OK(writer.WriteNext(dfRec.Key), "StorageEngine::WriteRecord()");
+			RET_IFNOT_OK(writer.WriteNext(dfRec.Value), "StorageEngine::WriteRecord()");
 
 			hfRecOut.DataFileId = fileId;
 			return Status::OK();

@@ -1,7 +1,7 @@
 #ifndef __CORE_HASHFILE_H__
 #define __CORE_HASHFILE_H__
 
-#include <unordered_map>
+#include <map>
 
 #include <Algorithm/MurmurHash3.h>
 
@@ -23,7 +23,7 @@ namespace FreshCask
 		};
 
 		typedef uint32_t HashType;
-		typedef std::unordered_map<HashType, Record> HashMap;
+		typedef std::map<HashType, std::pair<SmartByteArray, Record>> HashMap;
 
 		Status HashFunction(SmartByteArray bar, HashType& out)
 		{
