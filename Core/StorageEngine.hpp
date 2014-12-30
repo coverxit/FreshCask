@@ -75,10 +75,17 @@ namespace FreshCask
 
 		Status Close()
 		{
-			for (auto &engine : dfEngineMap)
-				engine.second->Close();
+			if (dfEngineMap.size() > 0)
+			{
+				for (auto &engine : dfEngineMap)
+					engine.second->Close();
 
-			RET_BY_SENDER(CreateHintFile(bucketDir, hashMap), "StorageEngine::Close()");
+				dfEngineMap.clear();
+				RET_BY_SENDER(CreateHintFile(bucketDir, hashMap), "StorageEngine::Close()");
+			}
+
+			// that means already closed
+			return Status::OK();
 		}
 
 		Status ReadValue(HashFile::Record hfRec, SmartByteArray &valueOut)
@@ -160,7 +167,7 @@ namespace FreshCask
 			std::stringstream stream;
 #ifdef WIN32
 			// TODO: create multi hint files
-			stream << bucketDir << "\\1" << HintFile::FileNameSuffix;
+			stream << bucketDir << "\\_bc" << HintFile::FileNameSuffix;
 			return stream.str();
 #else
 #endif

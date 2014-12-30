@@ -44,7 +44,7 @@ namespace FreshCask
 			//return Status::OK();
 		}
 
-		Status Put(const SmartByteArray& key, SmartByteArray &value)
+		Status Put(const SmartByteArray& key, const SmartByteArray &value)
 		{
 			HashFile::HashType hash;
 			RET_IFNOT_OK(HashFile::HashFunction(key, hash), "BucketManager::Put()");
@@ -69,15 +69,11 @@ namespace FreshCask
 			RET_BY_SENDER(Put(key, SmartByteArray::Null()), "BucketManager::Delete()");
 		}
 
-		Status Enumerate(std::function<bool(const SmartByteArray&, const SmartByteArray&)> func)
+		Status Enumerate(const std::function<bool(const SmartByteArray&, const SmartByteArray&)>& func)
 		{
-			for (auto& item : hashMap)
-			{
-				SmartByteArray value;
-				RET_IFNOT_OK(Get(item.second.first, value), "BucketManager::Enumerate()");
-				RET_IFNOT_OK(Status(func(item.second.first, value)), "BucketManager::Enumerate()");
-			}
-			return Status::OK();
+			return enumerate([=](const SmartByteArray& Key, const SmartByteArray& Value) -> Status {
+				return Status(func(Key, Value));
+			});
 		}
 
 		Status Compact()
@@ -86,7 +82,7 @@ namespace FreshCask
 
 			BucketManager tmpBucket;
 			RET_IFNOT_OK(tmpBucket.Open(tmpBucketDir), "BucketManager::Compact()");
-			RET_IFNOT_OK(tmpBucket.Enumerate([](const SmartByteArray& Key, const SmartByteArray& Value) -> Status {
+			RET_IFNOT_OK(tmpBucket.enumerate([&](const SmartByteArray& Key, const SmartByteArray& Value) -> Status {
 				RET_BY_SENDER(tmpBucket.Put(Key, Value), "BucketManager::CompactEnumerator()");
 			}), "BucketManager::Compact()");
 
@@ -95,8 +91,20 @@ namespace FreshCask
 			RET_IFNOT_OK(tmpBucket.Close(), "BucketManger::Compact()");
 
 			RET_IFNOT_OK(RemoveFile(bucketDir), "BucketManager::Compact()");
-			RET_IFNOT_OK(RemoveFile(tmpBucketDir, bucketDir), "BucketManager::Compact()");
+			RET_IFNOT_OK(RenameFile(tmpBucketDir, bucketDir), "BucketManager::Compact()");
 			RET_IFNOT_OK(this->Open(bucketDir), "BucketManager::Compact()");
+		}
+
+	private:
+		Status enumerate(const std::function<Status(const SmartByteArray&, const SmartByteArray&)>& func)
+		{
+			for (auto& item : hashMap)
+			{
+				SmartByteArray value;
+				RET_IFNOT_OK(Get(item.second.first, value), "BucketManager::Enumerate()");
+				RET_IFNOT_OK(func(item.second.first, value), "BucketManager::Enumerate()");
+			}
+			return Status::OK();
 		}
 
 	private:

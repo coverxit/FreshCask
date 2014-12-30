@@ -110,52 +110,32 @@ namespace FreshCask
 			return Status::OK();
 		}
 
-		Status Write(uint32_t offset, SmartByteArray bar, uint32_t *offsetOut = nullptr)
+		Status Write(uint32_t offset, const SmartByteArray& bar)
 		{
 			if (!IsOpen())
 				RET_BY_SENDER(Status::IOError("File not open"), "FileWriter::Write()");
 
 			std::lock_guard<std::mutex> lock(writeMutex);
 
-			if (INVALID_SET_FILE_POINTER == SetFilePointer(fileHandle, offset, NULL, FILE_BEGIN))
-				RET_BY_SENDER(Status::IOError("Failed to SetFilePointer"), "FileWriter::Write()");
-
-			if (offset + bar.Size() > DataFile::MaxFileSize)
-				RET_BY_SENDER(Status::NoFreeSpace("MaxFileSize reached"), "FileWriter::Write()");
-
 #ifdef WIN32
 			DWORD bytesWritten = 0;
 			if (FALSE == WriteFile(fileHandle, bar.Data(), bar.Size(), &bytesWritten, NULL) || bytesWritten != bar.Size())
 				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "FileWriter::Write()");
-
-			if (offsetOut) *offsetOut = offset;
 #endif
 			return Status::OK();
 		}
 
-		Status WriteNext(SmartByteArray bar, uint32_t *offsetOut = nullptr)
+		Status WriteNext(const SmartByteArray& bar)
 		{
 			if (!IsOpen())
 				RET_BY_SENDER(Status::IOError("File not open"), "FileWriter::Write()");
 
 			std::lock_guard<std::mutex> lock(writeMutex);
 
-			uint32_t curOffset;
-			if (INVALID_SET_FILE_POINTER == (curOffset = SetFilePointer(fileHandle, NULL, NULL, FILE_CURRENT))) // query current offset
-				RET_BY_SENDER(Status::IOError("Failed to SetFilePointer"), "FileWriter::Write()");
-
-			if (bar.Size() == 0)
-				return Status::OK();
-
-			if (curOffset + bar.Size() > DataFile::MaxFileSize)
-				RET_BY_SENDER(Status::NoFreeSpace("MaxFileSize reached"), "FileWriter::Write()");
-
 #ifdef WIN32
 			DWORD bytesWritten = 0;
 			if (FALSE == WriteFile(fileHandle, bar.Data(), bar.Size(), &bytesWritten, NULL) || bytesWritten != bar.Size())
 				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "FileWriter::Write()");
-
-			if (offsetOut) *offsetOut = curOffset;
 #endif
 			return Status::OK();
 		}

@@ -8,14 +8,17 @@ namespace FreshCask {
 	{
 	public:
 		SmartByteArray() : data(nullptr), size(0) {}
-		SmartByteArray(BytePtr data, uint32_t size) : data(data), size(size) {}
-		SmartByteArray(uint32_t size) : data(new Byte[size], selfAllocDeleter()), size(size) {}
-		SmartByteArray(std::string str) : data(new Byte[str.length()], selfAllocDeleter()), size(str.length())
+		SmartByteArray(uint32_t size) : data(new Byte[size]), size(size) {}
+		SmartByteArray(std::string str) : data(new Byte[str.length()]), size(str.length())
 		{
 			memcpy(Data(), &str[0], str.length());
 		}
+		SmartByteArray(BytePtr ptr, uint32_t size) : data(new Byte[size]), size(size)
+		{
+			memcpy(Data(), ptr, size);
+		}
 
-		std::string ToString()
+		std::string ToString() const
 		{
 			if (Data() != nullptr)
 				return std::string(reinterpret_cast<char*>(Data()), Size());
@@ -28,11 +31,6 @@ namespace FreshCask {
 
 		bool IsNull() { return size == 0 || data == nullptr; }
 		static SmartByteArray Null() { return SmartByteArray();  }
-
-	private:
-		struct selfAllocDeleter {
-			void operator()(BytePtr ptr) { delete[] ptr; }
-		};
 
 	private:
 		std::shared_ptr<Byte> data;

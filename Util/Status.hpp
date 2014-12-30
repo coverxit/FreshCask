@@ -18,7 +18,11 @@ namespace FreshCask
 	public:
 		Status() { code = cOK; }
 		explicit Status(int code) : code(code) {}
-		explicit Status(bool cond) : code(cUserDefined), message1("The operation was cancelled by user.") {}
+		explicit Status(bool cond)
+		{
+			if (!cond) code = cUserDefined, message1 = "The operation was cancelled by user.";
+			else code = cOK;
+		}
 		Status(int code, std::string message1, std::string message2)
 			: code(code), message1(message1), message2(message2) {}
 

@@ -141,7 +141,7 @@ namespace FreshCask
 			
 			// check header
 			std::function<Status()> CheckHeader = [&]() {
-				SmartByteArray buffer(new Byte[sizeof(DataFile::Header)], sizeof(DataFile::Header));
+				SmartByteArray buffer(sizeof(DataFile::Header));
 				RET_IFNOT_OK(reader.Read(0, buffer), "DataFileEngine::CheckHeader()");
 
 				DataFile::Header *header = reinterpret_cast<DataFile::Header*>(buffer.Data());
@@ -246,7 +246,8 @@ namespace FreshCask
 
 			RET_IFNOT_OK(writer.WriteNext(header), "DataFileEngine::WriteRecord()");
 			RET_IFNOT_OK(writer.WriteNext(dfRec.Key), "DataFileEngine::WriteRecord()");
-			RET_IFNOT_OK(writer.WriteNext(dfRec.Value, &hfRecOut.OffsetOfValue), "DataFileEngine::WriteRecord()");
+			RET_IFNOT_OK(writer.GetOffset(hfRecOut.OffsetOfValue), "DataFileEngine::WriteRecord()");
+			RET_IFNOT_OK(writer.WriteNext(dfRec.Value), "DataFileEngine::WriteRecord()");
 
 			hfRecOut.SizeOfValue = dfRec.Value.Size();
 			hfRecOut.DataFileId = fileId;

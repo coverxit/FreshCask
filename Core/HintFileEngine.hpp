@@ -106,7 +106,7 @@ namespace FreshCask
 			RET_IFNOT_OK(reader->Read(0, buffer), "HintFileEngine::readOpen()");
 
 			HintFile::Header *header = reinterpret_cast<HintFile::Header*>(buffer.Data());
-			if (header->MagicNumber != DataFile::DefaultMagicNumber)
+			if (header->MagicNumber != HintFile::DefaultMagicNumber)
 				RET_BY_SENDER(Status::InvalidArgument("Incorrect magic number"), "HintFileEngine::readOpen()");
 			if (header->MajorVersion > CurrentMajorVersion)
 				RET_BY_SENDER(Status::NotSupported("DataFile not supported"), "HintFileEngine::readOpen()");
@@ -123,7 +123,7 @@ namespace FreshCask
 			// writer header
 			SmartByteArray buffer(sizeof(HintFile::Header));
 			HintFile::Header *header = reinterpret_cast<HintFile::Header*>(buffer.Data());
-			header->MagicNumber = DataFile::DefaultMagicNumber;
+			header->MagicNumber = HintFile::DefaultMagicNumber;
 			header->MajorVersion = CurrentMajorVersion;
 			header->MinorVersion = CurrentMinorVersion;
 			header->Reserved = 0x0;
