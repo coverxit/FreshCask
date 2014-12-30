@@ -12,14 +12,14 @@ namespace FreshCask
 		struct Record
 		{
 			uint32_t DataFileId;
-			//uint32_t SizeOfValue;
-			uint32_t OffsetOfRecord;
+			uint32_t SizeOfValue;
+			uint32_t OffsetOfValue;
 			uint32_t TimeStamp;
 
-			Record() : DataFileId(-1), OffsetOfRecord(-1), TimeStamp(0) {}
+			Record() : DataFileId(-1), SizeOfValue(-1), OffsetOfValue(-1), TimeStamp(0) {}
 
-			Record(uint32_t DataFileId, uint32_t OffsetOfRecord, uint32_t TimeStamp) :
-				DataFileId(DataFileId), OffsetOfRecord(OffsetOfRecord), TimeStamp(TimeStamp) {}
+			Record(uint32_t DataFileId, uint32_t SizeOfValue, uint32_t OffsetOfRecord, uint32_t TimeStamp) :
+				DataFileId(DataFileId), SizeOfValue(SizeOfValue), OffsetOfValue(OffsetOfRecord), TimeStamp(TimeStamp) {}
 		};
 
 		typedef uint32_t HashType;

@@ -17,7 +17,8 @@ namespace FreshCask
 	{
 	public:
 		Status() { code = cOK; }
-		Status(int code) : code(code) {}
+		explicit Status(int code) : code(code) {}
+		explicit Status(bool cond) : code(cUserDefined), message1("The operation was cancelled by user.") {}
 		Status(int code, std::string message1, std::string message2)
 			: code(code), message1(message1), message2(message2) {}
 
@@ -45,6 +46,10 @@ namespace FreshCask
 		static Status Corrupted(const std::string& message1, const std::string& message2 = "")
 		{
 			return Status(cCorrupted, message1, message2);
+		}
+		static Status UserDefined(const std::string& message1, const std::string& message2 = "")
+		{
+			return Status(cUserDefined, message1, message2);
 		}
 
 		Status PushSender(const std::string& caller, const char* file, const int line) 
@@ -94,6 +99,10 @@ namespace FreshCask
 				result << "Corrupted: ";
 				break;
 
+			case cUserDefined:
+				result << "User Defined: ";
+				break;
+
 			default:
 				result << "Unkown code (" << code << "): ";
 				break;
@@ -131,6 +140,7 @@ namespace FreshCask
 			cNotSupported = 4,
 			cNoFreeSpace = 5,
 			cCorrupted = 6,
+			cUserDefined = 7,
 		};
 	};
 

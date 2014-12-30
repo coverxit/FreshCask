@@ -17,11 +17,12 @@ namespace FreshCask
 
 	namespace HashFile
 	{
-		const uint32_t HashSeed = 0x53484346; // FCHS
+		const uint32_t HashSeed = 0x53484346; // FCHS (FreshCask Hash File)
 	} // namespace HashFile
 
 	namespace HintFile
 	{
+		const uint32_t DefaultMagicNumber = 0x54484346; // FCHT (FreshCask Hint File)
 		const std::string FileNameSuffix = ".fcht";
 	}
 

@@ -6,7 +6,7 @@
 #include <Util/Status.hpp>
 #include <Util/SmartByteArray.hpp>
 
-#include <Core/StorageEnginePool.hpp>
+#include <Core/StorageEngine.hpp>
 
 namespace FreshCask
 {
@@ -18,13 +18,14 @@ namespace FreshCask
 
 		Status Open(std::string bucketPath)
 		{
-			enginePool = std::shared_ptr<StorageEnginePool>(new StorageEnginePool(bucketPath));
-			RET_BY_SENDER(enginePool->Open(), "BucketManager::Open()");
+			engine = std::shared_ptr<StorageEngine>(new StorageEngine(bucketPath));
+			RET_BY_SENDER(engine->Open(), "BucketManager::Open()");
 		}
 
 		Status Close() 
 		{ 
-			RET_BY_SENDER(enginePool->Close(), "BucketManager::Close()");
+			RET_IFNOT_OK(Merge(), "BucketManager::Close()");
+			RET_BY_SENDER(engine->Close(), "BucketManager::Close()");
 		}
 
 		Status Get(SmartByteArray key, SmartByteArray &out)
@@ -36,19 +37,20 @@ namespace FreshCask
 			if (it == hashMap.end())
 				RET_BY_SENDER(Status::NotFound("Key doesn't exist"), "BucketManager::Get()");
 
-			DataFile::Record dataRec;
-			RET_IFNOT_OK(enginePool->ReadRecord(it->second.second, dataRec), "BucketManager::Get()");
-			out = dataRec.Value;
-			return Status::OK();
+			RET_BY_SENDER(engine->ReadValue(it->second.second, out), "BucketManager::Get()");
+			//DataFile::Record dataRec;
+			//RET_IFNOT_OK(engine->ReadRecord(it->second.second, dataRec), "BucketManager::Get()");
+			//out = dataRec.Value;
+			//return Status::OK();
 		}
-		
+
 		Status Put(SmartByteArray key, SmartByteArray &value)
 		{
 			HashFile::HashType hash;
 			RET_IFNOT_OK(HashFile::HashFunction(key, hash), "BucketManager::Put()");
 
 			HashFile::Record hashRec;
-			RET_IFNOT_OK(enginePool->WriteRecord(DataFile::Record(key, value), hashRec), "BucketManager::Put()");
+			RET_IFNOT_OK(engine->WriteRecord(DataFile::Record(key, value), hashRec), "BucketManager::Put()");
 			
 			hashMap[hash] = std::pair<SmartByteArray, HashFile::Record>(key, hashRec);
 			return Status::OK();
@@ -67,20 +69,25 @@ namespace FreshCask
 			RET_BY_SENDER(Put(key, SmartByteArray::Null()), "BucketManager::Delete()");
 		}
 
-		Status Enumerate(std::function<Status(SmartByteArray, SmartByteArray&)> func)
+		Status Enumerate(std::function<bool(SmartByteArray, SmartByteArray&)> func)
 		{
 			for (auto& item : hashMap)
 			{
 				SmartByteArray value;
 				RET_IFNOT_OK(Get(item.second.first, value), "BucketManager::Enumerate()");
-				RET_IFNOT_OK(func(item.second.first, value), "BucketManager::Enumerate()");
+				RET_IFNOT_OK(Status(func(item.second.first, value)), "BucketManager::Enumerate()");
 			}
 			return Status::OK();
 		}
 
+		Status Merge()
+		{
+			RET_BY_SENDER(engine->Merge(), "BucketManager::Merge()");
+		}
+
 	private:
 		HashFile::HashMap hashMap;
-		std::shared_ptr<StorageEnginePool> enginePool;
+		std::shared_ptr<StorageEngine> engine;
 	};
 
 } // namespace FreshCask

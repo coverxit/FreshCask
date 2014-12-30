@@ -33,10 +33,10 @@ int main()
 
 	//std::mt19937 gen(FreshCask::HashFile::HashSeed);
 	start = std::chrono::high_resolution_clock::now();
-	bc.Enumerate([](FreshCask::SmartByteArray key, FreshCask::SmartByteArray &value) -> FreshCask::Status {
+	std::cout << bc.Enumerate([](FreshCask::SmartByteArray key, FreshCask::SmartByteArray &value) -> bool {
 		//std::cout << "Key: " << key.ToString() << std::endl;
-		return FreshCask::Status::OK();
-	});
+		return true;
+	}).ToString();
 	end = std::chrono::high_resolution_clock::now();
 	duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 	std::cout << "Enumerate 10,000 pairs in " << duration << " ms" << std::endl;

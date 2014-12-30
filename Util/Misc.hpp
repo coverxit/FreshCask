@@ -8,7 +8,7 @@ namespace FreshCask
 {
 	uint32_t GetTimeStamp() { return (uint32_t) time(NULL); }
 
-	bool IsFileExist(std::string& filePath)
+	bool IsFileExist(const std::string& filePath)
 	{
 #ifdef WIN32
 		DWORD dwAttrib = GetFileAttributesA(filePath.c_str());
@@ -17,7 +17,7 @@ namespace FreshCask
 #endif
 	}
 
-	bool IsDirExist(std::string& dirPath)
+	bool IsDirExist(const std::string& dirPath)
 	{
 #ifdef WIN32
 		DWORD dwAttrib = GetFileAttributesA(dirPath.c_str());
@@ -26,7 +26,7 @@ namespace FreshCask
 #endif
 	}
 
-	Status ListDir(std::string& dirPath, std::function<Status(std::string)> func)
+	Status ListDir(const std::string& dirPath, std::function<Status(std::string)> func)
 	{
 #ifdef WIN32
 		std::string query = dirPath + "\\*.*";
@@ -47,6 +47,11 @@ namespace FreshCask
 		return Status::OK();
 #else
 #endif
+	}
+
+	bool EndWith(const std::string &str, const std::string &match)
+	{
+		return str.substr(str.length() - match.length()) == match;
 	}
 
 	class CRC32
