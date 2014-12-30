@@ -26,6 +26,7 @@ namespace FreshCask {
 		BytePtr Data() const { return data.get(); }
 		uint32_t Size() const { return size; }
 
+		bool IsNull() { return size == 0 || data == nullptr; }
 		static SmartByteArray Null() { return SmartByteArray();  }
 
 	private:

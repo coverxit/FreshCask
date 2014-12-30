@@ -18,17 +18,17 @@ namespace FreshCask
 
 			Record() : DataFileId(-1), SizeOfValue(-1), OffsetOfValue(-1), TimeStamp(0) {}
 
-			Record(uint32_t DataFileId, uint32_t SizeOfValue, uint32_t OffsetOfRecord, uint32_t TimeStamp) :
-				DataFileId(DataFileId), SizeOfValue(SizeOfValue), OffsetOfValue(OffsetOfRecord), TimeStamp(TimeStamp) {}
+			Record(uint32_t DataFileId, uint32_t SizeOfValue, uint32_t OffsetOfValue, uint32_t TimeStamp) :
+				DataFileId(DataFileId), SizeOfValue(SizeOfValue), OffsetOfValue(OffsetOfValue), TimeStamp(TimeStamp) {}
 		};
 
 		typedef uint32_t HashType;
 		typedef std::map<HashType, std::pair<SmartByteArray, Record>> HashMap;
 
-		Status HashFunction(SmartByteArray bar, HashType& out)
+		Status HashFunction(const SmartByteArray &bar, HashType& out)
 		{
 			if (bar.Size() == 0)
-				return Status::InvalidArgument("HashFile::HashFunction()", "input is null");
+				RET_BY_SENDER(Status::InvalidArgument("Input is null"), "HashFile::HashFunction()");
 
 			MurmurHash3_x86_32(bar.Data(), bar.Size(), HashSeed, &out);
 			return Status::OK();

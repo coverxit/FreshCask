@@ -33,7 +33,7 @@ int main()
 
 	//std::mt19937 gen(FreshCask::HashFile::HashSeed);
 	start = std::chrono::high_resolution_clock::now();
-	std::cout << bc.Enumerate([](FreshCask::SmartByteArray key, FreshCask::SmartByteArray &value) -> bool {
+	std::cout << bc.Enumerate([](const FreshCask::SmartByteArray& key, const FreshCask::SmartByteArray& value) -> bool {
 		//std::cout << "Key: " << key.ToString() << std::endl;
 		return true;
 	}).ToString();

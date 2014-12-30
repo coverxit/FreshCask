@@ -16,19 +16,19 @@ namespace FreshCask
 		BucketManager() {}
 		~BucketManager() { Close(); }
 
-		Status Open(std::string bucketPath)
+		Status Open(const std::string &_bucketDir)
 		{
-			engine = std::shared_ptr<StorageEngine>(new StorageEngine(bucketPath));
+			bucketDir = _bucketDir;
+			engine = std::shared_ptr<StorageEngine>(new StorageEngine(bucketDir, hashMap));
 			RET_BY_SENDER(engine->Open(), "BucketManager::Open()");
 		}
 
 		Status Close() 
-		{ 
-			RET_IFNOT_OK(Merge(), "BucketManager::Close()");
+		{
 			RET_BY_SENDER(engine->Close(), "BucketManager::Close()");
 		}
 
-		Status Get(SmartByteArray key, SmartByteArray &out)
+		Status Get(const SmartByteArray& key, SmartByteArray &out)
 		{
 			HashFile::HashType hash;
 			RET_IFNOT_OK(HashFile::HashFunction(key, hash), "BucketManager::Get()");
@@ -44,7 +44,7 @@ namespace FreshCask
 			//return Status::OK();
 		}
 
-		Status Put(SmartByteArray key, SmartByteArray &value)
+		Status Put(const SmartByteArray& key, SmartByteArray &value)
 		{
 			HashFile::HashType hash;
 			RET_IFNOT_OK(HashFile::HashFunction(key, hash), "BucketManager::Put()");
@@ -56,7 +56,7 @@ namespace FreshCask
 			return Status::OK();
 		}
 
-		Status Delete(SmartByteArray key)
+		Status Delete(const SmartByteArray& key)
 		{
 			HashFile::HashType hash;
 			RET_IFNOT_OK(HashFile::HashFunction(key, hash), "BucketManager::Delete()");
@@ -69,7 +69,7 @@ namespace FreshCask
 			RET_BY_SENDER(Put(key, SmartByteArray::Null()), "BucketManager::Delete()");
 		}
 
-		Status Enumerate(std::function<bool(SmartByteArray, SmartByteArray&)> func)
+		Status Enumerate(std::function<bool(const SmartByteArray&, const SmartByteArray&)> func)
 		{
 			for (auto& item : hashMap)
 			{
@@ -80,12 +80,27 @@ namespace FreshCask
 			return Status::OK();
 		}
 
-		Status Merge()
+		Status Compact()
 		{
-			RET_BY_SENDER(engine->Merge(), "BucketManager::Merge()");
+			std::string tmpBucketDir = bucketDir + "__tmp__";
+
+			BucketManager tmpBucket;
+			RET_IFNOT_OK(tmpBucket.Open(tmpBucketDir), "BucketManager::Compact()");
+			RET_IFNOT_OK(tmpBucket.Enumerate([](const SmartByteArray& Key, const SmartByteArray& Value) -> Status {
+				RET_BY_SENDER(tmpBucket.Put(Key, Value), "BucketManager::CompactEnumerator()");
+			}), "BucketManager::Compact()");
+
+			RET_IFNOT_OK(StorageEngine::CreateHintFile(tmpBucketDir, hashMap), "BucketManager::Compact()");
+			RET_IFNOT_OK(this->Close(), "BucketManager::Compact()");
+			RET_IFNOT_OK(tmpBucket.Close(), "BucketManger::Compact()");
+
+			RET_IFNOT_OK(RemoveFile(bucketDir), "BucketManager::Compact()");
+			RET_IFNOT_OK(RemoveFile(tmpBucketDir, bucketDir), "BucketManager::Compact()");
+			RET_IFNOT_OK(this->Open(bucketDir), "BucketManager::Compact()");
 		}
 
 	private:
+		std::string bucketDir;
 		HashFile::HashMap hashMap;
 		std::shared_ptr<StorageEngine> engine;
 	};

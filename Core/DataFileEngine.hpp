@@ -1,5 +1,5 @@
-#ifndef __CORE_STORAGEENGINE_HPP__
-#define __CORE_STORAGEENGINE_HPP__
+#ifndef __CORE_DATASTORAGEENGINE_HPP__
+#define __CORE_DATASTORAGEENGINE_HPP__
 
 #include <Core/DataFile.h>
 #include <Core/HashFile.h>
@@ -190,13 +190,13 @@ namespace FreshCask
 		Status Close()
 		{
 			if (!IsOpen())
-				RET_BY_SENDER(Status::NotFound("File not open."), "DataFileEngine::Close()");
+				RET_BY_SENDER(Status::IOError("File not open."), "DataFileEngine::Close()");
 
 			reader.Close(); writer.Close();
 			return Status::OK();
 		}
 
-		Status ReadValue(HashFile::Record hfRec, SmartByteArray &valueOut)
+		Status ReadValue(const HashFile::Record &hfRec, SmartByteArray &valueOut)
 		{
 			RET_BY_SENDER(reader.Read(hfRec.OffsetOfValue, valueOut = SmartByteArray(hfRec.SizeOfValue)), "DataFileEngine::ReadValue()");
 		}
@@ -232,10 +232,8 @@ namespace FreshCask
 
 			if (curOffset + dfRec.GetSize() > DataFile::MaxFileSize)
 			{
-				// TODO: Write file header
 				fileFlag = DataFile::Flag::OlderFile;
-				RET_IFNOT_OK(writer.Write(offsetof(DataFile::Header, Flag), SmartByteArray(&fileFlag, sizeof(fileFlag))), "DataFileEngine::WriteRecord()");
-
+				RET_IFNOT_OK(writer.Write(offsetof(DataFile::Header, Flag), SmartByteArray((BytePtr)&fileFlag, sizeof(fileFlag))), "DataFileEngine::WriteRecord()");
 				RET_BY_SENDER(Status::NoFreeSpace("MaxFileSize reached."), "DataFileEngine::WriteRecord()");
 			}
 
@@ -275,4 +273,4 @@ namespace FreshCask
 		uint32_t fileId;
 	};
 } // namespace FreshCask
-#endif // __CORE_STORAGEENGINE_HPP__
+#endif // __CORE_DATASTORAGEENGINE_HPP__

@@ -54,12 +54,33 @@ namespace FreshCask
 		return str.substr(str.length() - match.length()) == match;
 	}
 
+	Status RemoveFile(const std::string& path)
+	{
+#ifdef WIN32
+		SHFILEOPSTRUCTA fileOp = { 0 };
+		fileOp.wFunc = FO_DELETE;
+		fileOp.pFrom = (path + "\0").c_str();
+		fileOp.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;
+
+		if (SHFileOperationA(&fileOp) == 0) return Status::OK();
+		else RET_BY_SENDER(Status::IOError("Failed to SHFileOperation."), "Utils::RemoveFile");
+#endif
+	}
+
+	Status RenameFile(const std::string& oldPath, const std::string& newPath)
+	{
+#ifdef WIN32
+		if (::MoveFileA(oldPath.c_str(), newPath.c_str())) return Status::OK();
+		else RET_BY_SENDER(Status::IOError("Failed to MoveFile."), "Utils::RenameFile");
+#endif
+	}
+
 	class CRC32
 	{
 	public:
 		typedef uint32_t CRCType;
 
-		static CRCType Get(SmartByteArray bar)
+		static CRCType Get(const SmartByteArray &bar)
 		{
 			CRCType crc = 0xFFFFFFFF;
 			uint32_t len = bar.Size();

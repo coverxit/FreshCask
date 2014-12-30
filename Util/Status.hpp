@@ -47,6 +47,10 @@ namespace FreshCask
 		{
 			return Status(cCorrupted, message1, message2);
 		}
+		static Status EndOfFile(const std::string& message1, const std::string& message2 = "")
+		{
+			return Status(cEndOfFile, message1, message2);
+		}
 		static Status UserDefined(const std::string& message1, const std::string& message2 = "")
 		{
 			return Status(cUserDefined, message1, message2);
@@ -65,6 +69,8 @@ namespace FreshCask
 		bool IsNotSupported() const { return code == cNotSupported; }
 		bool IsNoFreeSpace() const { return code == cNoFreeSpace; }
 		bool IsCorrupted() const { return code == cCorrupted; }
+		bool IsEndOfFile() const { return code == cEndOfFile; }
+		bool IsUserDefined() const { return code == cUserDefined; }
 
 		std::string ToString()
 		{
@@ -97,6 +103,10 @@ namespace FreshCask
 
 			case cCorrupted:
 				result << "Corrupted: ";
+				break;
+
+			case cEndOfFile:
+				result << "EOF: ";
 				break;
 
 			case cUserDefined:
@@ -140,7 +150,8 @@ namespace FreshCask
 			cNotSupported = 4,
 			cNoFreeSpace = 5,
 			cCorrupted = 6,
-			cUserDefined = 7,
+			cEndOfFile = 7,
+			cUserDefined = 8,
 		};
 	};
 
