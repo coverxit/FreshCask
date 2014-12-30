@@ -81,7 +81,7 @@ namespace FreshCask
 			//std::lock_guard<std::mutex> lock(readMutex);
 #ifdef WIN32
 			DWORD bytesReaded = 0;
-			if (FALSE == ReadFile(fileHandle, out.Data(), out.Size(), &bytesReaded, NULL) || bytesReaded != out.Size())
+			if (FALSE == ReadFile(fileHandle, out.Data(), out.Size(), &bytesReaded, NULL))
 				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "FileReader::ReadNext()");
 			else if (bytesReaded != out.Size())
 			{
