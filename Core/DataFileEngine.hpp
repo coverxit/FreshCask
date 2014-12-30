@@ -142,7 +142,7 @@ namespace FreshCask
 			// check header
 			std::function<Status()> CheckHeader = [&]() {
 				SmartByteArray buffer(sizeof(DataFile::Header));
-				RET_IFNOT_OK(reader.Read(0, buffer), "DataFileEngine::CheckHeader()");
+				RET_IFNOT_OK(reader.ReadNext(buffer), "DataFileEngine::CheckHeader()");
 
 				DataFile::Header *header = reinterpret_cast<DataFile::Header*>(buffer.Data());
 				if (header->MagicNumber != DataFile::DefaultMagicNumber)

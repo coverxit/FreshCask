@@ -103,7 +103,7 @@ namespace FreshCask
 
 			// check header
 			SmartByteArray buffer(new Byte[sizeof(HintFile::Header)], sizeof(HintFile::Header));
-			RET_IFNOT_OK(reader->Read(0, buffer), "HintFileEngine::readOpen()");
+			RET_IFNOT_OK(reader->ReadNext(buffer), "HintFileEngine::readOpen()");
 
 			HintFile::Header *header = reinterpret_cast<HintFile::Header*>(buffer.Data());
 			if (header->MagicNumber != HintFile::DefaultMagicNumber)

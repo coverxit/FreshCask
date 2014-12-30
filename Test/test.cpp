@@ -2,7 +2,7 @@
 #include <chrono>
 #include <random>
 
-#include <Include/FreshCask.h>
+#include <FreshCask.h>
 
 int main()
 {
@@ -11,7 +11,6 @@ int main()
 
 	if (!s.IsOK()) std::cout << s.ToString() << std::endl;
 
-	//FreshCask::SmartByteArray Key(new FreshCask::Byte[sizeof(uint32_t)], sizeof(uint32_t));
 	FreshCask::SmartByteArray Value(std::string("this is a test string for test purpose."));
 
 	std::chrono::high_resolution_clock::time_point start, end;

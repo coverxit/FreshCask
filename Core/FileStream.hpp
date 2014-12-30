@@ -83,8 +83,13 @@ namespace FreshCask
 			DWORD bytesReaded = 0;
 			if (FALSE == ReadFile(fileHandle, out.Data(), out.Size(), &bytesReaded, NULL) || bytesReaded != out.Size())
 				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "FileReader::ReadNext()");
-			else if (bytesReaded == 0)
-				RET_BY_SENDER(Status::EndOfFile("End Of File reached."), "FileReader::ReadNext()");
+			else if (bytesReaded != out.Size())
+			{
+				if (bytesReaded > 0)
+					RET_BY_SENDER(Status::IOError("Bytes readed is less than out.Size()."), "FileReader::ReadNext()");
+				else
+					RET_BY_SENDER(Status::EndOfFile("End Of File reached."), "FileReader::ReadNext()");
+			}
 #endif
 			return Status::OK();
 		}

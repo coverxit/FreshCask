@@ -13,10 +13,7 @@ namespace FreshCask {
 		{
 			memcpy(Data(), &str[0], str.length());
 		}
-		SmartByteArray(BytePtr ptr, uint32_t size) : data(new Byte[size]), size(size)
-		{
-			memcpy(Data(), ptr, size);
-		}
+		SmartByteArray(BytePtr ptr, uint32_t size) : data(ptr, senderAllocDeleter()), size(size) {}
 
 		std::string ToString() const
 		{
@@ -31,6 +28,11 @@ namespace FreshCask {
 
 		bool IsNull() { return size == 0 || data == nullptr; }
 		static SmartByteArray Null() { return SmartByteArray();  }
+
+	private:
+		struct senderAllocDeleter { // tricky, avoid delete by std::shared_ptr
+			void operator()(BytePtr) {}
+		};
 
 	private:
 		std::shared_ptr<Byte> data;
