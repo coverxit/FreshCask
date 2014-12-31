@@ -46,7 +46,7 @@ namespace FreshCask
 #endif
 
 			fileHandle = nullptr;
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "FileReader::Close()");
 		}
 
 		Status Read(uint32_t offset, SmartByteArray &out)
@@ -70,7 +70,7 @@ namespace FreshCask
 					RET_BY_SENDER(Status::EndOfFile("End Of File reached."), "FileReader::Read()");
 			}
 #endif
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "FileReader::Read()");
 		}
 
 		Status ReadNext(SmartByteArray &out)
@@ -91,7 +91,7 @@ namespace FreshCask
 					RET_BY_SENDER(Status::EndOfFile("End Of File reached."), "FileReader::ReadNext()");
 			}
 #endif
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "FileReader::ReadNext()");
 		}
 
 	private:
@@ -112,7 +112,7 @@ namespace FreshCask
 #endif
 
 			fileHandle = nullptr;
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "FileWriter::Close()");
 		}
 
 		Status Write(uint32_t offset, const SmartByteArray& bar)
@@ -127,7 +127,7 @@ namespace FreshCask
 			if (FALSE == WriteFile(fileHandle, bar.Data(), bar.Size(), &bytesWritten, NULL) || bytesWritten != bar.Size())
 				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "FileWriter::Write()");
 #endif
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "FileWriter::Write()");
 		}
 
 		Status WriteNext(const SmartByteArray& bar)
@@ -142,7 +142,7 @@ namespace FreshCask
 			if (FALSE == WriteFile(fileHandle, bar.Data(), bar.Size(), &bytesWritten, NULL) || bytesWritten != bar.Size())
 				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "FileWriter::Write()");
 #endif
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "FileWriter::WriteNext()");
 		}
 
 	private:
