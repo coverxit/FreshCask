@@ -13,6 +13,8 @@
 
 namespace FreshCask
 {
+	uint32_t GetTimeStamp() { return (uint32_t)time(NULL); }
+
 	class Status
 	{
 	public:
@@ -26,7 +28,10 @@ namespace FreshCask
 		Status(int code, std::string message1, std::string message2)
 			: code(code), message1(message1), message2(message2) {}
 
-		static Status OK() { return Status(); }
+		static Status OK() 
+		{ 
+			return Status(cOK, "The operation completed successfully.", ""); 
+		}
 		static Status NotFound(const std::string& message1, const std::string& message2 = "")
 		{
 			return Status(cNotFound, message1, message2);
@@ -60,7 +65,7 @@ namespace FreshCask
 			return Status(cUserDefined, message1, message2);
 		}
 
-		Status PushSender(const std::string& caller, const char* file, const int line) 
+		Status& PushSender(const std::string& caller, const char* file, const int line) 
 		{ 
 			traceback.push_back(make_tuple(caller, file, line));
 			return *this;
@@ -83,7 +88,8 @@ namespace FreshCask
 			switch (code)
 			{
 			case cOK:
-				return "OK: ";
+				result << "OK: ";
+				break;
 
 			case cNotFound:
 				result << "Not Found: ";

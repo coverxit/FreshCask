@@ -1,10 +1,6 @@
 #ifndef __CORE_DATAFILE_H__
 #define __CORE_DATAFILE_H__
 
-#include <unordered_map>
-
-#include <Algorithm/MurmurHash3.h>
-
 namespace FreshCask
 {
 	namespace DataFile
@@ -46,6 +42,62 @@ namespace FreshCask
 			Record(const SmartByteArray &Key, const SmartByteArray &Value) : CRC32(-1), Key(Key), Value(Value), Header(Key.Size(), Value.Size()) {}
 			uint32_t GetSize() { return sizeof(CRC32) + sizeof(Header) + Key.Size() + Value.Size(); }
 		};
+
+		class CRC32
+		{
+		public:
+			typedef uint32_t CRCType;
+
+			static CRCType Get(const SmartByteArray &bar)
+			{
+				CRCType crc = 0xFFFFFFFF;
+				uint32_t len = bar.Size();
+				BytePtr buffer = bar.Data();
+
+				initTable();
+
+				while (len--)
+					crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *buffer++];
+
+				return crc ^ 0xFFFFFFFF;
+			}
+
+			static CRCType CalcDataFileRecord(DataFile::Record dfRec)
+			{
+				SmartByteArray buffer(sizeof(DataFile::RecordHeader) + dfRec.Key.Size() + dfRec.Value.Size());
+				BytePtr ptr = buffer.Data();
+
+				memcpy(ptr, &dfRec.Header, sizeof(DataFile::RecordHeader));
+				memcpy(ptr + sizeof(DataFile::RecordHeader), dfRec.Key.Data(), dfRec.Key.Size());
+				memcpy(ptr + sizeof(DataFile::RecordHeader) + dfRec.Key.Size(), dfRec.Value.Data(), dfRec.Value.Size());
+
+				return Get(buffer);
+			}
+
+		private:
+			static void initTable()
+			{
+				bool init = false;
+
+				if (init) return;
+
+				init = true;
+				for (int i = 0; i < 256; i++)
+				{
+					CRCType crc = i;
+					for (int j = 0; j < 8; j++)
+					{
+						if (crc & 1)
+							crc = (crc >> 1) ^ 0xEDB88320;
+						else
+							crc = crc >> 1;
+					}
+					CRCTable[i] = crc;
+				}
+			}
+			static CRCType CRCTable[256];
+		};
+		CRC32::CRCType CRC32::CRCTable[256] = { 0 };
 	} // namespace DataFile
 } // namespace FreshCask
 

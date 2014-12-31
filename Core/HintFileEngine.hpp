@@ -61,18 +61,14 @@ namespace FreshCask
 			switch (openMode)
 			{
 			case Read:
-				reader->Close();
-				break;
+				RET_BY_SENDER(reader->Close(), "HintFileEngine::Close()");
 
 			case Write:
-				writer->Close();
-				break;
+				RET_BY_SENDER(writer->Close(), "HintFileEngine::Close()");
 
 			default:
-				break;
+				RET_BY_SENDER(Status::InvalidArgument("openMode is invalid."), "HintFileEngine::Close()");
 			}
-
-			RET_BY_SENDER(Status::OK(), "HintFileEngine::Close()");
 		}
 
 		Status ReadRecord(HintFile::Record &hfRecOut)

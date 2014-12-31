@@ -6,8 +6,6 @@
 
 namespace FreshCask
 {
-	uint32_t GetTimeStamp() { return (uint32_t) time(NULL); }
-
 	bool IsFileExist(const std::string& filePath)
 	{
 #ifdef WIN32
@@ -26,7 +24,7 @@ namespace FreshCask
 #endif
 	}
 
-	Status ListDir(const std::string& dirPath, std::function<Status(std::string)> func)
+	Status ListDir(const std::string& dirPath, std::function<Status(const std::string&)> func)
 	{
 #ifdef WIN32
 		std::string query = dirPath + "\\*.*";
@@ -57,79 +55,38 @@ namespace FreshCask
 	Status RemoveFile(const std::string& path)
 	{
 #ifdef WIN32
-		SHFILEOPSTRUCTA fileOp = { 0 };
-		fileOp.wFunc = FO_DELETE;
-		fileOp.pFrom = (path + "\0").c_str();
-		fileOp.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;
-
-		if (SHFileOperationA(&fileOp) == 0) RET_BY_SENDER(Status::OK(), "Utils::RemoveFile()");
-		else RET_BY_SENDER(Status::IOError("Failed to SHFileOperation."), "Utils::RemoveFile()");
+		if (::DeleteFileA(path.c_str())) RET_BY_SENDER(Status::OK(), "Utils::RemoveFile()");
+		else RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "Utils::RemoveFile()");
 #endif
+	}
+
+	Status RemoveDir(const std::string& path)
+	{
+		auto processFile = [&](const std::string &file) -> Status {
+			RET_BY_SENDER(RemoveFile(file), "Utils::RemoveDir()::ProcessFile()");
+		};
+
+		RET_IFNOT_OK(ListDir(path, processFile), "Utils::RemoveDir()");
+
+		if (::RemoveDirectoryA(path.c_str())) RET_BY_SENDER(Status::OK(), "Utils::RemoveDir()");
+		else RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "Utils::RemoveDir()");
 	}
 
 	Status RenameFile(const std::string& oldPath, const std::string& newPath)
 	{
 #ifdef WIN32
 		if (::MoveFileA(oldPath.c_str(), newPath.c_str())) RET_BY_SENDER(Status::OK(), "Utils::RenameFile()");
-		else RET_BY_SENDER(Status::IOError("Failed to MoveFile."), "Utils::RenameFile()");
+		else RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "Utils::RenameFile()");
 #endif
 	}
 
-	class CRC32
+	Status MakeDir(const std::string& path)
 	{
-	public:
-		typedef uint32_t CRCType;
-
-		static CRCType Get(const SmartByteArray &bar)
-		{
-			CRCType crc = 0xFFFFFFFF;
-			uint32_t len = bar.Size();
-			BytePtr buffer = bar.Data();
-
-			initTable();
-
-			while (len--)
-				crc = (crc >> 8) ^ CRCTable[(crc & 0xFF) ^ *buffer++];
-
-			return crc ^ 0xFFFFFFFF;
-		}
-
-		static CRCType CalcDataFileRecord(DataFile::Record dfRec)
-		{
-			SmartByteArray buffer(sizeof(DataFile::RecordHeader) + dfRec.Key.Size() + dfRec.Value.Size());
-			BytePtr ptr = buffer.Data();
-
-			memcpy(ptr, &dfRec.Header, sizeof(DataFile::RecordHeader));
-			memcpy(ptr + sizeof(DataFile::RecordHeader), dfRec.Key.Data(), dfRec.Key.Size());
-			memcpy(ptr + sizeof(DataFile::RecordHeader) + dfRec.Key.Size(), dfRec.Value.Data(), dfRec.Value.Size());
-
-			return Get(buffer);
-		}
-
-	private:
-		static void initTable()
-		{
-			bool init = false;
-
-			if (init) return;
-
-			init = true;
-			for (int i = 0; i < 256; i++)
-			{
-				CRCType crc = i;
-				for (int j = 0; j < 8; j++)
-				{
-					if (crc & 1)
-						crc = (crc >> 1) ^ 0xEDB88320;
-					else
-						crc = crc >> 1;
-				}
-				CRCTable[i] = crc;
-			}
-		}
-		static CRCType CRCTable[256];
-	};
-	CRC32::CRCType CRC32::CRCTable[256] = { 0 };
+#ifdef WIN32
+		if (::CreateDirectoryA(path.c_str(), NULL)) RET_BY_SENDER(Status::OK(), "Utils::MakeDir()");
+		else RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "Utils::MakeDir()");
+#endif
+	}
 } // namespace FreshCask
 
 #endif // __UTIL_MISC_HPP__

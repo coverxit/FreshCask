@@ -8,12 +8,13 @@ namespace FreshCask {
 	{
 	public:
 		SmartByteArray() : data(nullptr), size(0) {}
-		SmartByteArray(uint32_t size) : data(new Byte[size]), size(size) {}
-		SmartByteArray(std::string str) : data(new Byte[str.length()]), size(str.length())
+		SmartByteArray(const uint32_t& size) : data(new Byte[size]), size(size) {}
+		SmartByteArray(const std::string& str) : data(new Byte[str.length()]), size(str.length())
 		{
 			memcpy(Data(), &str[0], str.length());
 		}
-		SmartByteArray(BytePtr ptr, uint32_t size) : data(ptr, senderAllocDeleter()), size(size) {}
+		SmartByteArray(const char* str) { new (this) SmartByteArray(std::string(str)); }
+		SmartByteArray(const BytePtr ptr, const uint32_t& size) : data(ptr, senderAllocDeleter()), size(size) {}
 
 		std::string ToString() const
 		{

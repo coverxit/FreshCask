@@ -10,6 +10,7 @@ namespace FreshCask
 
 #include <Util/Status.hpp>
 #include <Util/SmartByteArray.hpp>
+#include <Util/Misc.hpp>
 
 #include <Core/BucketManager.hpp>
 

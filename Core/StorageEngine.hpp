@@ -19,18 +19,18 @@ namespace FreshCask
 	public:
 		StorageEngine(std::string bucketDir, HashFile::HashMap& hashMap) 
 			: bucketDir(bucketDir), hashMap(hashMap), lastFileId(0), dfActiveEngine(std::make_pair((uint32_t)-1, nullptr)) {}
-		~StorageEngine() { Close(); }
+		~StorageEngine() { Close(true); }
 
 		Status Open()
 		{
 			if (!IsDirExist(bucketDir))
 				return Status::NotFound("StorageEngine::Open()", "Directory doesn't exist.");
 
-			RET_IFNOT_OK(ListDir(bucketDir, [&](std::string filePath) -> Status {
+			RET_IFNOT_OK(ListDir(bucketDir, [&](const std::string &filePath) -> Status {
 				if (EndWith(filePath, DataFile::FileNameSuffix))
 				{
 					std::shared_ptr<DataFileEngine> engine = std::shared_ptr<DataFileEngine>(new DataFileEngine(filePath));
-					RET_IFNOT_OK(engine->Open(), "StorageEngine::ProcessFile()");
+					RET_IFNOT_OK(engine->Open(), "StorageEngine::Open()::ProcessFile()");
 					dfEngineMap[engine->GetFileId()] = engine;
 
 					uint32_t curFileId = engine->GetFileId();
@@ -43,7 +43,7 @@ namespace FreshCask
 				{
 					// load hint file
 					HintFileEngine engine(HintFileEngine::OpenMode::Read, filePath);
-					RET_IFNOT_OK(engine.Open(), "StorageEngine::ProcessFile()");
+					RET_IFNOT_OK(engine.Open(), "StorageEngine::Open()::ProcessFile()");
 
 					while (true)
 					{
@@ -53,34 +53,34 @@ namespace FreshCask
 						if (!s.IsOK())
 						{
 							if (s.IsEndOfFile()) break;
-							else RET_BY_SENDER(s, "StorageEngine::ProcessFile()");
+							else RET_BY_SENDER(s, "StorageEngine::Open()::ProcessFile()");
 						}
 							
 						HashFile::HashType hash;
-						RET_IFNOT_OK(HashFile::HashFunction(hfRec.Key, hash), "StorageEngine::ProcessFile()");
+						RET_IFNOT_OK(HashFile::HashFunction(hfRec.Key, hash), "StorageEngine::Open()::ProcessFile()");
 						hashMap[hash] = std::make_pair(hfRec.Key, HashFile::Record(hfRec.Header.DataFileId, hfRec.Header.SizeOfValue, hfRec.Header.OffsetOfValue, hfRec.Header.TimeStamp));
 					}
 
-					RET_IFNOT_OK(engine.Close(), "StorageEngine::ProcessFile()");
+					RET_IFNOT_OK(engine.Close(), "StorageEngine::Open()::ProcessFile()");
 					// delete hint file when re-creation done
-					RET_IFNOT_OK(RemoveFile(filePath), "StorageEngine::ProcessFile()");
+					// RET_IFNOT_OK(RemoveFile(filePath), "StorageEngine::Open()::ProcessFile()");
 				}
 
-				RET_BY_SENDER(Status::OK(), "StorageEngine::ProcessFile()");
+				RET_BY_SENDER(Status::OK(), "StorageEngine::Open()::ProcessFile()");
 			}), "StorageEngine::Open()");
 
 			RET_BY_SENDER(Status::OK(), "StorageEngine::Open()");
 		}
 
-		Status Close()
+		Status Close(bool makeHintFile)
 		{
 			if (dfEngineMap.size() > 0)
 			{
 				for (auto &engine : dfEngineMap)
-					engine.second->Close();
+					RET_IFNOT_OK(engine.second->Close(), "StorageEngine::Close()");
 
 				dfEngineMap.clear();
-				RET_BY_SENDER(CreateHintFile(bucketDir, hashMap), "StorageEngine::Close()");
+				if (makeHintFile) RET_BY_SENDER(CreateHintFile(bucketDir, hashMap), "StorageEngine::Close()");
 			}
 
 			// that means already closed

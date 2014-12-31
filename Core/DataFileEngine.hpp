@@ -5,8 +5,6 @@
 #include <Core/HashFile.h>
 #include <Core/DataFileStream.hpp>
 
-#include <Util/Misc.hpp>
-
 namespace FreshCask
 {
 	/*class MappingEngine
@@ -142,15 +140,15 @@ namespace FreshCask
 			// check header
 			std::function<Status()> CheckHeader = [&]() {
 				SmartByteArray buffer(sizeof(DataFile::Header));
-				RET_IFNOT_OK(reader.ReadNext(buffer), "DataFileEngine::CheckHeader()");
+				RET_IFNOT_OK(reader.ReadNext(buffer), "DataFileEngine::Open()::CheckHeader()");
 
 				DataFile::Header *header = reinterpret_cast<DataFile::Header*>(buffer.Data());
 				if (header->MagicNumber != DataFile::DefaultMagicNumber)
-					RET_BY_SENDER(Status::InvalidArgument("Incorrect magic number"), "DataFileEngine::CheckHeader()");
+					RET_BY_SENDER(Status::InvalidArgument("Incorrect magic number"), "DataFileEngine::Open()::CheckHeader()");
 				if (header->MajorVersion > CurrentMajorVersion)
-					RET_BY_SENDER(Status::NotSupported("DataFile not supported"), "DataFileEngine::CheckHeader()");
+					RET_BY_SENDER(Status::NotSupported("DataFile not supported"), "DataFileEngine::Open()::CheckHeader()");
 				else if (header->MinorVersion > CurrentMinorVersion)
-					RET_BY_SENDER(Status::NotSupported("DataFile not supported"), "DataFileEngine::CheckHeader()");
+					RET_BY_SENDER(Status::NotSupported("DataFile not supported"), "DataFileEngine::Open()::CheckHeader()");
 				/*if (header->Flag < DataFile::Flag::OlderFile && header->Flag > DataFile::Flag::ActiveFile)
 					return Status::NotSupported("DataFileEngine::CheckHeader()", "Invalid flag.");*/
 
@@ -191,8 +189,8 @@ namespace FreshCask
 			if (!IsOpen())
 				RET_BY_SENDER(Status::IOError("File not open."), "DataFileEngine::Close()");
 
-			reader.Close(); writer.Close();
-			RET_BY_SENDER(Status::OK(), "DataFileEngine::Close()");
+			RET_IFNOT_OK(reader.Close(), "DataFileEngine::Close()");
+			RET_BY_SENDER(writer.Close(), "DataFileEngine::Close()");
 		}
 
 		Status ReadValue(const HashFile::Record &hfRec, SmartByteArray &valueOut)
@@ -237,7 +235,7 @@ namespace FreshCask
 			}
 
 			hfRecOut.TimeStamp = dfRec.Header.TimeStamp = GetTimeStamp();
-			dfRec.CRC32 = CRC32::CalcDataFileRecord(dfRec);
+			dfRec.CRC32 = DataFile::CRC32::CalcDataFileRecord(dfRec);
 
 			SmartByteArray header(sizeof(dfRec.CRC32) + sizeof(DataFile::RecordHeader));
 			memcpy(header.Data(), &dfRec.CRC32, sizeof(dfRec.CRC32));
