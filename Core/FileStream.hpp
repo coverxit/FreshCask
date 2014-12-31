@@ -46,7 +46,7 @@ namespace FreshCask
 #endif
 
 			fileHandle = nullptr;
-			RET_BY_SENDER(Status::OK(), "FileReader::Close()");
+			return Status::OK();
 		}
 
 		Status Read(uint32_t offset, SmartByteArray &out)
@@ -70,7 +70,7 @@ namespace FreshCask
 					RET_BY_SENDER(Status::EndOfFile("End Of File reached."), "FileReader::Read()");
 			}
 #endif
-			RET_BY_SENDER(Status::OK(), "FileReader::Read()");
+			return Status::OK();
 		}
 
 		Status ReadNext(SmartByteArray &out)
@@ -91,7 +91,7 @@ namespace FreshCask
 					RET_BY_SENDER(Status::EndOfFile("End Of File reached."), "FileReader::ReadNext()");
 			}
 #endif
-			RET_BY_SENDER(Status::OK(), "FileReader::ReadNext()");
+			return Status::OK();
 		}
 
 	private:
@@ -101,22 +101,18 @@ namespace FreshCask
 	class FileWriter : public FileStream
 	{
 	public:
-		FileWriter() : FileStream(nullptr), bufUsed(0) {}
-		FileWriter(const HANDLE& fileHandle) : FileStream(fileHandle), bufUsed(0) {}
+		FileWriter() : FileStream(nullptr) {}
+		FileWriter(const HANDLE& fileHandle) : FileStream(fileHandle) {}
 		virtual ~FileWriter() { Close(); }
 
 		Status Close()
 		{
 #ifdef WIN32
-			if (IsOpen())
-			{
-				Flush();
-				CloseHandle(fileHandle);
-			}
+			if (IsOpen()) CloseHandle(fileHandle);
 #endif
 
 			fileHandle = nullptr;
-			RET_BY_SENDER(Status::OK(), "FileWrite::Close()");
+			return Status::OK();
 		}
 
 		Status Write(uint32_t offset, const SmartByteArray& bar)
@@ -131,61 +127,28 @@ namespace FreshCask
 			if (FALSE == WriteFile(fileHandle, bar.Data(), bar.Size(), &bytesWritten, NULL) || bytesWritten != bar.Size())
 				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "FileWriter::Write()");
 #endif
-			RET_BY_SENDER(Status::OK(), "FileWriter::Write()");
+			return Status::OK();
 		}
 
 		Status WriteNext(const SmartByteArray& bar)
 		{
 			if (!IsOpen())
-				RET_BY_SENDER(Status::IOError("File not open"), "FileWriter::WriteNext()");
+				RET_BY_SENDER(Status::IOError("File not open"), "FileWriter::Write()");
 
 			std::lock_guard<std::mutex> lock(writeMutex);
-			RET_BY_SENDER(WriteBuffer(bar), "FileWriter::WriteNext()");
+
+#ifdef WIN32
+			DWORD bytesWritten = 0;
+			if (FALSE == WriteFile(fileHandle, bar.Data(), bar.Size(), &bytesWritten, NULL) || bytesWritten != bar.Size())
+				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "FileWriter::Write()");
+#endif
+			return Status::OK();
 		}
 
 	private:
-		Status WriteBuffer(const SmartByteArray& bar)
-		{
-			if (bar.Size() >= DataFile::WriteBufferSize)
-			{
 #ifdef WIN32
-				DWORD bytesWritten = 0;
-				if (FALSE == WriteFile(fileHandle, bar.Data(), bar.Size(), &bytesWritten, NULL) || bytesWritten != bar.Size())
-					RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "FileWriter::WriteBuffer()");
-#endif
-			}
-			else
-			{
-				if (bar.Size() + bufUsed > DataFile::WriteBufferSize)
-					RET_IFNOT_OK(Flush(), "FileWriter::WriteBuffer()");
-
-				memcpy(buffer + bufUsed, bar.Data(), bar.Size());
-			}
-
-			RET_BY_SENDER(Status::OK(), "FileWriter::WriteBuffer()");
-		}
-
-		Status Flush()
-		{
-			if (bufUsed > 0)
-			{
-#ifdef WIN32
-				// TODO: cope with situations that if write failed and buffer not all flushed into disk.
-				DWORD bytesWritten = 0;
-				if (FALSE == WriteFile(fileHandle, buffer, bufUsed, &bytesWritten, NULL) || bytesWritten != bufUsed)
-					RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "FileWriter::Flush()");
-#endif
-			}
-
-			bufUsed = 0;
-			RET_BY_SENDER(Status::OK(), "FileWriter::Flush()");
-		}
-
-	private:
-		Byte buffer[DataFile::WriteBufferSize];
-		uint32_t bufUsed;
-
 		std::mutex writeMutex;
+#endif
 	};
 
 } // namespace FreshCask
