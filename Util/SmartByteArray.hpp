@@ -30,8 +30,8 @@ namespace FreshCask {
 		static SmartByteArray Null() { return SmartByteArray();  }
 
 	private:
-		struct senderAllocDeleter { // tricky, avoid delete by std::shared_ptr
-			void operator()(BytePtr) {}
+		struct senderAllocDeleter { // tricky, avoid being deleted by std::shared_ptr
+			void operator()(BytePtr) { /* do nothing */ }
 		};
 
 	private:
