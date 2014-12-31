@@ -44,7 +44,7 @@ namespace FreshCask
 		} while (FindNextFileA(hFind, &fileData));
 
 		FindClose(hFind);
-		return Status::OK();
+		RET_BY_SENDER(Status::OK(), "Utils::ListDir()");
 #else
 #endif
 	}
@@ -62,16 +62,16 @@ namespace FreshCask
 		fileOp.pFrom = (path + "\0").c_str();
 		fileOp.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;
 
-		if (SHFileOperationA(&fileOp) == 0) return Status::OK();
-		else RET_BY_SENDER(Status::IOError("Failed to SHFileOperation."), "Utils::RemoveFile");
+		if (SHFileOperationA(&fileOp) == 0) RET_BY_SENDER(Status::OK(), "Utils::RemoveFile()");
+		else RET_BY_SENDER(Status::IOError("Failed to SHFileOperation."), "Utils::RemoveFile()");
 #endif
 	}
 
 	Status RenameFile(const std::string& oldPath, const std::string& newPath)
 	{
 #ifdef WIN32
-		if (::MoveFileA(oldPath.c_str(), newPath.c_str())) return Status::OK();
-		else RET_BY_SENDER(Status::IOError("Failed to MoveFile."), "Utils::RenameFile");
+		if (::MoveFileA(oldPath.c_str(), newPath.c_str())) RET_BY_SENDER(Status::OK(), "Utils::RenameFile()");
+		else RET_BY_SENDER(Status::IOError("Failed to MoveFile."), "Utils::RenameFile()");
 #endif
 	}
 

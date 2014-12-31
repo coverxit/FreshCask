@@ -66,11 +66,10 @@ namespace FreshCask
 					RET_IFNOT_OK(RemoveFile(filePath), "StorageEngine::ProcessFile()");
 				}
 
-				return Status::OK();
+				RET_BY_SENDER(Status::OK(), "StorageEngine::ProcessFile()");
 			}), "StorageEngine::Open()");
 
-			
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "StorageEngine::Open()");
 		}
 
 		Status Close()
@@ -85,7 +84,7 @@ namespace FreshCask
 			}
 
 			// that means already closed
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "StorageEngine::Close()");
 		}
 
 		Status ReadValue(HashFile::Record hfRec, SmartByteArray &valueOut)

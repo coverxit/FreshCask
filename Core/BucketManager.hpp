@@ -53,7 +53,7 @@ namespace FreshCask
 			RET_IFNOT_OK(engine->WriteRecord(DataFile::Record(key, value), hashRec), "BucketManager::Put()");
 			
 			hashMap[hash] = std::pair<SmartByteArray, HashFile::Record>(key, hashRec);
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "BucketManager::Put()");
 		}
 
 		Status Delete(const SmartByteArray& key)
@@ -71,7 +71,7 @@ namespace FreshCask
 
 		Status Enumerate(const std::function<bool(const SmartByteArray&, const SmartByteArray&)>& func)
 		{
-			return enumerate([=](const SmartByteArray& Key, const SmartByteArray& Value) -> Status {
+			return listPairs([=](const SmartByteArray& Key, const SmartByteArray& Value) -> Status {
 				return Status(func(Key, Value));
 			});
 		}
@@ -82,7 +82,7 @@ namespace FreshCask
 
 			BucketManager tmpBucket;
 			RET_IFNOT_OK(tmpBucket.Open(tmpBucketDir), "BucketManager::Compact()");
-			RET_IFNOT_OK(tmpBucket.enumerate([&](const SmartByteArray& Key, const SmartByteArray& Value) -> Status {
+			RET_IFNOT_OK(tmpBucket.listPairs([&](const SmartByteArray& Key, const SmartByteArray& Value) -> Status {
 				RET_BY_SENDER(tmpBucket.Put(Key, Value), "BucketManager::CompactEnumerator()");
 			}), "BucketManager::Compact()");
 
@@ -96,15 +96,15 @@ namespace FreshCask
 		}
 
 	private:
-		Status enumerate(const std::function<Status(const SmartByteArray&, const SmartByteArray&)>& func)
+		Status listPairs(const std::function<Status(const SmartByteArray&, const SmartByteArray&)>& func)
 		{
 			for (auto& item : hashMap)
 			{
 				SmartByteArray value;
-				RET_IFNOT_OK(Get(item.second.first, value), "BucketManager::Enumerate()");
-				RET_IFNOT_OK(func(item.second.first, value), "BucketManager::Enumerate()");
+				RET_IFNOT_OK(Get(item.second.first, value), "BucketManager::listPairs()");
+				RET_IFNOT_OK(func(item.second.first, value), "BucketManager::listPairs()");
 			}
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "BucketManager::listPairs()");
 		}
 
 	private:

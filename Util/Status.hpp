@@ -16,12 +16,12 @@ namespace FreshCask
 	class Status
 	{
 	public:
-		Status() { code = cOK; }
+		Status() { code = cOK, message1 = "The operation completed successfully."; }
 		explicit Status(int code) : code(code) {}
 		explicit Status(bool cond)
 		{
 			if (!cond) code = cUserDefined, message1 = "The operation was cancelled by user.";
-			else code = cOK;
+			else code = cOK, message1 = "The operation completed successfully.";
 		}
 		Status(int code, std::string message1, std::string message2)
 			: code(code), message1(message1), message2(message2) {}
@@ -83,7 +83,7 @@ namespace FreshCask
 			switch (code)
 			{
 			case cOK:
-				return "OK";
+				return "OK: ";
 
 			case cNotFound:
 				result << "Not Found: ";

@@ -31,7 +31,7 @@ namespace FreshCask
 				RET_BY_SENDER(Status::InvalidArgument("Input is null"), "HashFile::HashFunction()");
 
 			MurmurHash3_x86_32(bar.Data(), bar.Size(), HashSeed, &out);
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "HashFile::HashFunction()");
 		}
 	} // namespace HashFile
 } // namespace FreshCask

@@ -72,7 +72,7 @@ namespace FreshCask
 				break;
 			}
 
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "HintFileEngine::Close()");
 		}
 
 		Status ReadRecord(HintFile::Record &hfRecOut)
@@ -113,7 +113,7 @@ namespace FreshCask
 			else if (header->MinorVersion > CurrentMinorVersion)
 				RET_BY_SENDER(Status::NotSupported("DataFile not supported"), "HintFileEngine::readOpen()");
 
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "HintFileEngine::readOpen()");
 		}
 
 		Status writeOpen()

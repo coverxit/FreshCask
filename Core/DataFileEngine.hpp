@@ -156,18 +156,17 @@ namespace FreshCask
 
 				fileFlag = header->Flag;
 				fileId = header->FileId;
-				return Status::OK();
+				RET_BY_SENDER(Status::OK(), "DataFileEngine::CheckHeader()");
 			};
 
 			RET_IFNOT_OK(CheckHeader(), "DataFileEngine::Open()");
 			RET_IFNOT_OK(writer.Open(), "DataFileEngine::Open()");
-
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "DataFileEngine::Open()");
 		}
 
 		Status Create(uint32_t _fileId)
 		{
-			RET_IFNOT_OK(writer.Open(true), "DataFileEngine::Open()");
+			RET_IFNOT_OK(writer.Open(true), "DataFileEngine::Create()");
 
 			// writer header
 			SmartByteArray buffer(sizeof(DataFile::Header));
@@ -179,12 +178,12 @@ namespace FreshCask
 			header->FileId = _fileId;
 			header->Reserved = 0x0;
 
-			RET_IFNOT_OK(writer.WriteNext(buffer), "DataFileEngine::Open()");
-			RET_IFNOT_OK(reader.Open(), "DataFileEngine::Open()");
+			RET_IFNOT_OK(writer.WriteNext(buffer), "DataFileEngine::Create()");
+			RET_IFNOT_OK(reader.Open(), "DataFileEngine::Create()");
 
 			fileFlag = DataFile::Flag::ActiveFile;
 			fileId = _fileId;
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "DataFileEngine::Create()");
 		}
 
 		Status Close()
@@ -193,7 +192,7 @@ namespace FreshCask
 				RET_BY_SENDER(Status::IOError("File not open."), "DataFileEngine::Close()");
 
 			reader.Close(); writer.Close();
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "DataFileEngine::Close()");
 		}
 
 		Status ReadValue(const HashFile::Record &hfRec, SmartByteArray &valueOut)
@@ -219,7 +218,7 @@ namespace FreshCask
 			uint32_t CRC32 = CRC32::CalcDataFileRecord(dfRecOut);
 			if (dfRecOut.CRC32 != CRC32) RET_BY_SENDER(Status::Corrupted("CRC32 checksum incorrect"), "DataFileEngine::ReadRecord()");
 
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "DataFileEngine::ReadRecord()");
 		}*/
 
 		Status WriteRecord(DataFile::Record dfRec, HashFile::Record &hfRecOut)
@@ -251,7 +250,7 @@ namespace FreshCask
 
 			hfRecOut.SizeOfValue = dfRec.Value.Size();
 			hfRecOut.DataFileId = fileId;
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "DataFileEngine::WriteRecord()");
 		}
 
 		uint32_t GetFileId() 

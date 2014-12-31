@@ -19,12 +19,11 @@ namespace FreshCask
 				))
 				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "DataFileReader::Open()");
 #endif
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "DataFileReader::Open()");
 		}
 
 	private:
 		std::string filePath;
-		//std::mutex readMutex;
 	};
 
 	class DataFileWriter : public FileWriter
@@ -44,7 +43,7 @@ namespace FreshCask
 			if (!truncate && INVALID_SET_FILE_POINTER == SetFilePointer(fileHandle, 0, NULL, FILE_END))
 				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "DataFileWriter::Open()");
 #endif
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "DataFileWriter::Open()");
 		}
 
 		Status GetOffset(uint32_t &out)
@@ -55,14 +54,11 @@ namespace FreshCask
 			if (INVALID_SET_FILE_POINTER == (out = SetFilePointer(fileHandle, NULL, NULL, FILE_CURRENT))) // query current offset
 				RET_BY_SENDER(Status::IOError("Failed to SetFilePointer"), "DataFileWriter::GetOffset()");
 
-			return Status::OK();
+			RET_BY_SENDER(Status::OK(), "DataFileWriter::GetOffset()");
 		}
 
 	private:
 		std::string filePath;
-#ifdef WIN32
-		std::mutex writeMutex;
-#endif
 	};
 } // namespace FreshCask
 
