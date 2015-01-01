@@ -1,8 +1,6 @@
 #ifndef __CORE_DATAFILESTREAM_HPP__
 #define __CORE_DATAFILESTREAM_HPP__
 
-#include <mutex>
-
 namespace FreshCask
 {
 	class DataFileReader : public FileReader

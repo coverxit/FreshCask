@@ -4,6 +4,7 @@
 #include <sstream>
 #include <vector>
 #include <tuple>
+#include <ctime>
 
 #ifdef WIN32
 #include <Windows.h>
@@ -129,11 +130,10 @@ namespace FreshCask
 
 			result << message1;
 			if (message2.length() > 0) result << " - " << message2;
-			result << std::endl;
-
-			if (traceback.size() > 0)
+			
+			if (EnableStatusTrackback && traceback.size() > 0)
 			{
-				result << std::endl << "Traceback:" << std::endl;
+				result << std::endl << std::endl << "Traceback:" << std::endl;
 				for (auto sender : traceback)
 				{
 					std::string& file = std::get<1>(sender);

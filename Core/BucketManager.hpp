@@ -1,8 +1,6 @@
 #ifndef __CORE_BUCKETMANAGER_HPP__
 #define __CORE_BUCKETMANAGER_HPP__
 
-#include <thread>
-
 #include <Core/Config.h>
 
 #include <Util/Status.hpp>
@@ -188,7 +186,9 @@ namespace FreshCask
 			RET_IFNOT_OK(tmpBucket.Close(), "BucketManger::Compact()");
 
 			RET_IFNOT_OK(RemoveDir(bucketDir), "BucketManager::Compact()");
-			std::this_thread::sleep_for(std::chrono::milliseconds(1)); // fuck windows, must sleep for a duration
+#ifdef WIN32
+			::Sleep(1);	// fuck windows, must wait 1 ms.
+#endif
 			RET_IFNOT_OK(RenameFile(tmpBucketDir.str(), bucketDir), "BucketManager::Compact()");
 			RET_BY_SENDER(this->Open(bucketDir), "BucketManager::Compact()");
 		}

@@ -1,10 +1,14 @@
 #ifndef __CORE_CONFIG_H__
 #define __CORE_CONFIG_H__
 
+#include <string>
+
 namespace FreshCask 
 {
 	const uint32_t CurrentMajorVersion = 1;
 	const uint32_t CurrentMinorVersion = 0;
+
+	const bool EnableStatusTrackback = true;
 
 	namespace DataFile 
 	{

@@ -18,7 +18,7 @@ namespace FreshCask
 
 	public:
 		StorageEngine(std::string bucketDir, HashFile::HashMap& hashMap) 
-			: bucketDir(bucketDir), hashMap(hashMap), lastFileId(0), dfActiveEngine(std::make_pair((uint32_t)-1, nullptr)) {}
+			: bucketDir(bucketDir), hashMap(hashMap), lastFileId(0), dfActiveEngine(std::pair<uint32_t, DataFileEnginePtr>((uint32_t)-1, NULL)) {}
 		~StorageEngine() { Close(true); }
 
 		Status Open()
@@ -133,14 +133,6 @@ namespace FreshCask
 #endif
 		}
 
-	private:
-		std::string bucketDir;
-		HashFile::HashMap& hashMap;
-
-		DataFileEngineMap dfEngineMap;
-		std::pair<uint32_t, DataFileEnginePtr> dfActiveEngine;
-		uint32_t lastFileId;
-
 	public:
 		static Status CreateHintFile(const std::string& bucketDir, const HashFile::HashMap &hashMap)
 		{
@@ -160,7 +152,6 @@ namespace FreshCask
 			RET_BY_SENDER(engine.Close(), "StorageEngine::CreateHintFile()");
 		}
 
-	private:
 		static std::string genHintFilePath(const std::string &bucketDir)
 		{
 			std::stringstream stream;
@@ -171,6 +162,14 @@ namespace FreshCask
 #else
 #endif
 		}
+
+	private:
+		std::string bucketDir;
+		HashFile::HashMap& hashMap;
+
+		DataFileEngineMap dfEngineMap;
+		std::pair<uint32_t, DataFileEnginePtr> dfActiveEngine;
+		uint32_t lastFileId;
 	};
 } // namespace FreshCask
 #endif // __CORE_STORAGEENGINE_HPP__

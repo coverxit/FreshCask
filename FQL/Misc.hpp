@@ -75,12 +75,12 @@ namespace FreshCask
 				if (p.front() == '"')
 				{
 					if (p.back() != '"')
-						return std::make_pair(false, (std::string("Missing '\"' after '") + p + "'"));
+						return std::make_pair(false, (std::string("Missing `\"` after `") + p + "`"));
 				}
 				else
 				{
 					if (p.back() != '\'')
-						return std::make_pair(false, std::string("Missing \"'\" after '") + p + "'");
+						return std::make_pair(false, std::string("Missing `'` after `") + p + "`");
 				}
 
 				out = p.substr(1, p.length() - 2);

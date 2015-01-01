@@ -3,7 +3,7 @@
 
 #include <map>
 
-#include <Algorithm/MurmurHash3.h>
+#include <Algorithm/MurmurHash3.hpp>
 
 namespace FreshCask
 {

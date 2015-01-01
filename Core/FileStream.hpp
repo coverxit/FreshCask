@@ -6,7 +6,7 @@
 #else
 #endif
 
-#include <mutex>
+#include <Util/LockGuard.hpp>
 
 namespace FreshCask
 {
@@ -35,7 +35,7 @@ namespace FreshCask
 	class FileReader : public FileStream
 	{
 	public:
-		FileReader() : FileStream(nullptr) {}
+		FileReader() {}
 		FileReader(const HANDLE& fileHandle) : FileStream(fileHandle) {}
 		virtual ~FileReader() { Close(); }
 
@@ -54,7 +54,7 @@ namespace FreshCask
 			if (!IsOpen())
 				RET_BY_SENDER(Status::IOError("File not open"), "FileReader::Read()");
 
-			//std::lock_guard<std::mutex> lock(readMutex);
+			LockGuard lock(readMutex);
 #ifdef WIN32
 			if (INVALID_SET_FILE_POINTER == SetFilePointer(fileHandle, offset, NULL, FILE_BEGIN))
 				RET_BY_SENDER(Status::IOError("Failed to SetFilePointer"), "FileReader::Read()");
@@ -78,7 +78,7 @@ namespace FreshCask
 			if (!IsOpen())
 				RET_BY_SENDER(Status::IOError("File not open"), "FileReader::ReadNext()");
 
-			//std::lock_guard<std::mutex> lock(readMutex);
+			LockGuard lock(readMutex);
 #ifdef WIN32
 			DWORD bytesReaded = 0;
 			if (FALSE == ReadFile(fileHandle, out.Data(), out.Size(), &bytesReaded, NULL))
@@ -95,13 +95,13 @@ namespace FreshCask
 		}
 
 	private:
-		//std::mutex readMutex;
+		Mutex readMutex;
 	};
 
 	class FileWriter : public FileStream
 	{
 	public:
-		FileWriter() : FileStream(nullptr) {}
+		FileWriter() {}
 		FileWriter(const HANDLE& fileHandle) : FileStream(fileHandle) {}
 		virtual ~FileWriter() { Close(); }
 
@@ -120,7 +120,7 @@ namespace FreshCask
 			if (!IsOpen())
 				RET_BY_SENDER(Status::IOError("File not open"), "FileWriter::Write()");
 
-			std::lock_guard<std::mutex> lock(writeMutex);
+			LockGuard lock(writeMutex);
 
 #ifdef WIN32
 			DWORD bytesWritten = 0;
@@ -135,7 +135,7 @@ namespace FreshCask
 			if (!IsOpen())
 				RET_BY_SENDER(Status::IOError("File not open"), "FileWriter::Write()");
 
-			std::lock_guard<std::mutex> lock(writeMutex);
+			LockGuard lock(writeMutex);
 
 #ifdef WIN32
 			DWORD bytesWritten = 0;
@@ -146,9 +146,7 @@ namespace FreshCask
 		}
 
 	private:
-#ifdef WIN32
-		std::mutex writeMutex;
-#endif
+		Mutex writeMutex;
 	};
 
 } // namespace FreshCask

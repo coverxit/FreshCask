@@ -1,10 +1,6 @@
 #ifndef __CORE_HINTFILE_H__
 #define __CORE_HINTFILE_H__
 
-#include <map>
-
-#include <Algorithm/MurmurHash3.h>
-
 namespace FreshCask
 {
 	namespace HintFile

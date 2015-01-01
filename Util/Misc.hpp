@@ -1,7 +1,6 @@
 #ifndef __UTIL_MISC_HPP__
 #define __UTIL_MISC_HPP__
 
-#include <ctime>
 #include <functional>
 
 namespace FreshCask

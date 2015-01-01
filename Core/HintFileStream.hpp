@@ -1,8 +1,6 @@
 #ifndef __CORE_HINTFILESTREAM_HPP__
 #define __CORE_HINTFILESTREAM_HPP__
 
-#include <mutex>
-
 namespace FreshCask
 {
 	class HintFileReader : public FileReader
