@@ -66,6 +66,29 @@ namespace FreshCask
 			if (!s.empty()) ret.push_back(s);
 			return ret;
 		}
+
+		std::pair<bool, std::string> dealQuotation(const std::string& p, const std::string& ep, std::string& out)
+		{
+			out = p;
+			if (p.front() == '"' || p.front() == '\'') // expect an matched " or '
+			{
+				if (p.front() == '"')
+				{
+					if (p.back() != '"')
+						return std::make_pair(false, (std::string("Missing '\"' after '") + p + "'"));
+				}
+				else
+				{
+					if (p.back() != '\'')
+						return std::make_pair(false, std::string("Missing \"'\" after '") + p + "'");
+				}
+
+				out = p.substr(1, p.length() - 2);
+				if (out.empty())
+					return std::make_pair(false, ep);
+			}
+			return std::make_pair(true, "OK");
+		}
 	} // namespace FQL
 } // namespace FreshCask
 

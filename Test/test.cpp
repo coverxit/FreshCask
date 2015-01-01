@@ -176,12 +176,12 @@ int main()
 			syntaxCheck.Bind("proc", procStatement);
 
 			std::string q;
-			std::cout << "'(s)top' to quit >> ";
+			std::cout << "FQL> ";
 			do {
 				std::cin.sync();
 				std::getline(std::cin, q);
 
-				if (q == "stop" || q == "s") break;
+				if (q == "quit" || q == "q") break;
 
 				if (procBegin)
 				{
@@ -204,17 +204,17 @@ int main()
 						std::cout << FreshCask::FQL::Parser::ToString(parser.Parse(q)) << std::endl;
 				}
 
-				if (procBegin) std::cout << "   .. ";
+				if (procBegin) std::cout << "     ..  5";
 				else 
 				{
 					if (!commandVec.empty())
 					{
-						for (int i = 0; i < commandVec.size() - 1; i++)
+						for (size_t i = 0; i < commandVec.size() - 1; i++)
 							parser.Parse(commandVec[i]);
 						commandVec.clear();
 					}
 
-					std::cout << ">> ";
+					std::cout << "FQL> ";
 				}
 			} while (true);
 		}

@@ -33,14 +33,16 @@ namespace FreshCask
 #define MAKE_TOKEN_PARSER(name) std::bind(&Parser::name, this, std::placeholders::_1, std::placeholders::_2)
 				tokenParsers = TokenParserMap
 				{
-					{ "list",				MAKE_TOKEN_PARSER(ListDatabaseParser) },
-					{ "select",				MAKE_TOKEN_PARSER(SelectDatbaseParser) },
-					{ "get",				MAKE_TOKEN_PARSER(GetParser) },
-					{ "put",				MAKE_TOKEN_PARSER(PutParser) },
-					{ "delete",				MAKE_TOKEN_PARSER(DeleteParser) },
-					{ "enumerate",			MAKE_TOKEN_PARSER(EnumerateParser) },
-					{ "compact",			MAKE_TOKEN_PARSER(CompactParser) },
-					{ "proc",				MAKE_TOKEN_PARSER(ProcParser) },
+					{ "list",				MAKE_TOKEN_PARSER(ListDatabaseParser)	},
+					{ "select",				MAKE_TOKEN_PARSER(SelectDatbaseParser)	},
+					{ "create",				MAKE_TOKEN_PARSER(CreateDatbaseParser)	},
+					{ "remove",				MAKE_TOKEN_PARSER(RemoveDatbaseParser)	},
+					{ "get",				MAKE_TOKEN_PARSER(GetParser)			},
+					{ "put",				MAKE_TOKEN_PARSER(PutParser)			},
+					{ "delete",				MAKE_TOKEN_PARSER(DeleteParser)			},
+					{ "enumerate",			MAKE_TOKEN_PARSER(EnumerateParser)		},
+					{ "compact",			MAKE_TOKEN_PARSER(CompactParser)		},
+					{ "proc",				MAKE_TOKEN_PARSER(ProcParser)			},
 				};
 #undef MAKE_TOKEN_PARSER
 			}
@@ -125,6 +127,66 @@ namespace FreshCask
 				return OK();
 			}
 
+			RetType CreateDatbaseParser(const VerbArray& q, BindStatement s)
+			{
+				if (q.empty())
+					return Fail("Expected 'database' after 'create'");
+
+				if (toLower(q[0]) != "database")
+					return Fail(std::string("Expected 'database' rather than '") + q[0] + "' after 'create'");
+
+				if (q.size() == 1) // we need database name
+					return Fail("Expected '<database>' after 'database'");
+
+				if (q.size() > 2) // other chars after <database>
+					return Fail(std::string("Unexpected verb '") + q[2] + "' after '" + q[1] + "'");
+
+				static std::vector<char> invalidChar = {
+					0x5C, 0x2F, 0x3A, 0x2A, 0x3F, 0x22, 0x3C, 0x3E, 0x7C
+				};
+
+				for (auto& c : invalidChar)
+					if (q[1].find(c) != std::string::npos) // invalid char
+						return Fail(std::string("Invalid character: \'") + c + "' in '" + q[1] + "'");
+
+				if (s == nullptr)
+					return OK("No binded statement to parser 'create database'.");
+				else
+					s(ParamArray(q.begin() + 1, q.end()));
+
+				return OK();
+			}
+
+			RetType RemoveDatbaseParser(const VerbArray& q, BindStatement s)
+			{
+				if (q.empty())
+					return Fail("Expected 'database' after 'remove'");
+
+				if (toLower(q[0]) != "database")
+					return Fail(std::string("Expected 'database' rather than '") + q[0] + "' after 'remove'");
+
+				if (q.size() == 1) // we need database name
+					return Fail("Expected '<database>' after 'database'");
+
+				if (q.size() > 2) // other chars after <database>
+					return Fail(std::string("Unexpected verb '") + q[2] + "' after '" + q[1] + "'");
+
+				static std::vector<char> invalidChar = {
+					0x5C, 0x2F, 0x3A, 0x2A, 0x3F, 0x22, 0x3C, 0x3E, 0x7C
+				};
+
+				for (auto& c : invalidChar)
+					if (q[1].find(c) != std::string::npos) // invalid char
+						return Fail(std::string("Invalid character: \'") + c + "' in '" + q[1] + "'");
+
+				if (s == nullptr)
+					return OK("No binded statement to parser 'remove database'.");
+				else
+					s(ParamArray(q.begin() + 1, q.end()));
+
+				return OK();
+			}
+
 			RetType GetParser(const VerbArray& q, BindStatement s)
 			{
 				if (q.empty())
@@ -133,24 +195,9 @@ namespace FreshCask
 				if (q.size() > 1) // other chars after <key>
 					return Fail(std::string("Unexpected verb '") + q[1] + "' after '" + q[0] + "'");
 
-				std::string key = q[0];
-				if (q[0].front() == '"' || q[0].front() == '\'') // expect an matched " or '
-				{
-					if (q[0].front() == '"')
-					{
-						if (q[0].back() != '"')
-							return Fail(std::string("Missing '\"' after '") + q[0] + "'");
-					}
-					else
-					{
-						if (q[0].back() != '\'')
-							return Fail(std::string("Missing \"'\" after '") + q[0] + "'");
-					}
-
-					key = q[0].substr(1, q[0].length() - 2);
-					if (key.empty())
-						return Fail("Expected NOT NULL '<key>' after 'get'");
-				}
+				std::string key;
+				RetType ret = dealQuotation(q[0], "Expected NOT NULL '<key>' after 'get'", key);
+				if (!IsOK(ret)) return ret;
 
 				if (s == nullptr)
 					return OK("No binded statement to parser 'get'.");
@@ -175,43 +222,14 @@ namespace FreshCask
 				if (q.size() > 2) // other chars after <value>
 					return Fail(std::string("Unexpected verb '") + q[2] + "' after '" + q[1] + "'");
 
-				std::string key = q[0];
-				if (q[0].front() == '"' || q[0].front() == '\'') // expect an matched " or '
-				{
-					if (q[0].front() == '"')
-					{
-						if (q[0].back() != '"')
-							return Fail(std::string("Missing '\"' after '") + q[0] + "'");
-					}
-					else
-					{
-						if (q[0].back() != '\'')
-							return Fail(std::string("Missing \"'\" after '") + q[0] + "'");
-					}
+				std::string key, value;
+				RetType ret;
 
-					key = q[0].substr(1, q[0].length() - 2);
-					if (key.empty())
-						return Fail("Expected NOT NULL '<key>' after 'put'");
-				}
+				ret = dealQuotation(q[0], "Expected NOT NULL '<key>' after 'put'", key);
+				if (!IsOK(ret)) return ret;
 
-				std::string value = q[1];
-				if (q[1].front() == '"' || q[1].front() == '\'') // expect an matched " or '
-				{
-					if (q[1].front() == '"')
-					{
-						if (q[1].back() != '"')
-							return Fail(std::string("Missing '\"' after '") + q[1] + "'");
-					}
-					else
-					{
-						if (q[1].back() != '\'')
-							return Fail(std::string("Missing \"'\" after '") + q[1] + "'");
-					}
-
-					value = q[1].substr(1, q[1].length() - 2);
-					if (value.empty())
-						return Fail(std::string("Expected NOT NULL '<value>' after '") + q[0] + "'");
-				}
+				ret = dealQuotation(q[1], std::string("Expected NOT NULL '<value>' after '") + q[0] + "'", value);
+				if (!IsOK(ret)) return ret;
 
 				if (s == nullptr)
 					return OK("No binded statement to parser 'put'.");
@@ -234,24 +252,9 @@ namespace FreshCask
 				if (q.size() > 1) // other chars after <key>
 					return Fail(std::string("Unexpected verb '") + q[1] + "' after '" + q[0] + "'");
 
-				std::string key = q[0];
-				if (q[0].front() == '"' || q[0].front() == '\'') // expect an matched " or '
-				{
-					if (q[0].front() == '"')
-					{
-						if (q[0].back() != '"')
-							return Fail(std::string("Missing '\"' after '") + q[0] + "'");
-					}
-					else
-					{
-						if (q[0].back() != '\'')
-							return Fail(std::string("Missing \"'\" after '") + q[0] + "'");
-					}
-
-					key = q[0].substr(1, q[0].length() - 2);
-					if (key.empty())
-						return Fail("Expected NOT NULL '<key>' after 'delete'");
-				}
+				std::string key;
+				RetType ret = dealQuotation(q[0], "Expected NOT NULL '<key>' after 'get'", key);
+				if (!IsOK(ret)) return ret;
 
 				if (s == nullptr)
 					return OK("No binded statement to parser 'delete'.");
