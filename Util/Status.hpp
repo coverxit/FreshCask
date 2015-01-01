@@ -4,7 +4,6 @@
 #include <sstream>
 #include <vector>
 #include <tuple>
-#include <system_error>
 
 #ifdef WIN32
 #include <Windows.h>
