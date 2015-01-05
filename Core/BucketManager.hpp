@@ -194,7 +194,7 @@ namespace FreshCask
 				RET_BY_SENDER(tmpBucket.Put(key, value), "BucketManager::Compact()::Enumerator()");
 			}), "BucketManager::Compact()");
 
-			RET_IFNOT_OK(this->Close(), "BucketManager::Compact()");
+			RET_IFNOT_OK(this->Close(false), "BucketManager::Compact()");
 			RET_IFNOT_OK(tmpBucket.Close(), "BucketManger::Compact()");
 
 			RET_IFNOT_OK(RemoveDir(bucketDir), "BucketManager::Compact()");

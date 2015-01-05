@@ -9,7 +9,7 @@ namespace FreshCask
 	const uint32_t CurrentMinorVersion = 0;
 
 	const bool EnableStatusTrackback = true;
-	const uint32_t DefaultLRUCacheSize = 3;
+	const uint32_t DefaultLRUCacheSize = 100;
 
 	namespace DataFile 
 	{

@@ -16,32 +16,32 @@ namespace FreshCask
 		class Parser
 		{
 		public:
-			typedef std::vector<std::string>									ParamArray;
-			typedef std::vector<std::string>									VerbArray;
-			typedef std::function<void(ParamArray)>								BindStatement;
-			typedef std::pair<bool, std::string>								RetType;
+			typedef std::vector<std::string>												ParamArray;
+			typedef std::vector<std::string>												VerbArray;
+			typedef std::function<void(ParamArray)>											BindStatement;
+			typedef std::pair<bool, std::string>											RetType;
 
 		private:
-			typedef std::function<RetType(const VerbArray&, BindStatement)>		TokenParser;
-			typedef std::map<std::string, std::pair<TokenParser, bool>>			TokenParserMap;
-			typedef std::function<RetType(const VerbArray&)>					TokenStatement;
-			typedef std::map<std::string, TokenStatement>						TokenStatementMap;
+			typedef std::function<RetType(const VerbArray&, BindStatement, ParamArray*)>	TokenParser;
+			typedef std::map<std::string, std::pair<TokenParser, bool>>						TokenParserMap;
+			typedef std::function<RetType(const VerbArray&, ParamArray*)>					TokenStatement;
+			typedef std::map<std::string, TokenStatement>									TokenStatementMap;
 
 		public:
 			Parser() 
 			{
-#define MAKE_TOKEN_PARSER(name) std::bind(&Parser::name, this, std::placeholders::_1, std::placeholders::_2)
+#define MAKE_TOKEN_PARSER(name) std::bind(&Parser::name, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
 				tokenParsers = TokenParserMap
 				{
 					// token				parser										bind-able
 					{ "list",				{ MAKE_TOKEN_PARSER(ListParser),			false	} },
-					{ "list database",		{ MAKE_TOKEN_PARSER(ListDatabaseParser),	true	} },
+					{ "list bucket",		{ MAKE_TOKEN_PARSER(ListBucketParser),		true	} },
 					{ "select",				{ MAKE_TOKEN_PARSER(SelectParser),			false	} },
-					{ "select database",	{ MAKE_TOKEN_PARSER(SelectDatbaseParser),	true	} },
+					{ "select bucket",		{ MAKE_TOKEN_PARSER(SelectBucketParser),	true	} },
 					{ "create",				{ MAKE_TOKEN_PARSER(CreateParser),			false	} },
-					{ "create database",	{ MAKE_TOKEN_PARSER(CreateDatbaseParser),	true	} },
+					{ "create bucket",		{ MAKE_TOKEN_PARSER(CreateBucketParser),	true	} },
 					{ "remove",				{ MAKE_TOKEN_PARSER(RemoveParser),			false	} },
-					{ "remove database",	{ MAKE_TOKEN_PARSER(RemoveDatbaseParser),	true	} },
+					{ "remove bucket",		{ MAKE_TOKEN_PARSER(RemoveBucketParser),	true	} },
 					{ "get",				{ MAKE_TOKEN_PARSER(GetParser),				true	} },
 					{ "put",				{ MAKE_TOKEN_PARSER(PutParser),				true	} },
 					{ "delete",				{ MAKE_TOKEN_PARSER(DeleteParser),			true	} },
@@ -54,20 +54,20 @@ namespace FreshCask
 #undef MAKE_TOKEN_PARSER
 
 #ifndef _M_CEE // fuck C++/CLI!!!
-#define MAKE_TOKEN_STATEMENT(name) std::bind(&Parser::name, this, std::placeholders::_1, nullptr)
+#define MAKE_TOKEN_STATEMENT(name) std::bind(&Parser::name, this, std::placeholders::_1, nullptr, std::placeholders::_2)
 #else
-#define MAKE_TOKEN_STATEMENT(name) std::bind(&Parser::name, this, std::placeholders::_1, __nullptr)
+#define MAKE_TOKEN_STATEMENT(name) std::bind(&Parser::name, this, std::placeholders::_1, __nullptr, std::placeholders::_2)
 #endif
 				tokenStatements = TokenStatementMap
 				{
 					{ "list",				MAKE_TOKEN_STATEMENT(ListParser)		  },
-					{ "list database",		MAKE_TOKEN_STATEMENT(ListDatabaseParser)  },
+					{ "list bucket",		MAKE_TOKEN_STATEMENT(ListBucketParser)    },
 					{ "select",				MAKE_TOKEN_STATEMENT(SelectParser)		  },
-					{ "select database",	MAKE_TOKEN_STATEMENT(SelectDatbaseParser) },
+					{ "select bucket",		MAKE_TOKEN_STATEMENT(SelectBucketParser)  },
 					{ "create",				MAKE_TOKEN_STATEMENT(CreateParser)		  },
-					{ "create database",	MAKE_TOKEN_STATEMENT(CreateDatbaseParser) },
+					{ "create bucket",		MAKE_TOKEN_STATEMENT(CreateBucketParser)  },
 					{ "remove",				MAKE_TOKEN_STATEMENT(RemoveParser)		  },
-					{ "remove database",	MAKE_TOKEN_STATEMENT(RemoveDatbaseParser) },
+					{ "remove bucket",		MAKE_TOKEN_STATEMENT(RemoveBucketParser)  },
 					{ "get",				MAKE_TOKEN_STATEMENT(GetParser)			  },
 					{ "put",				MAKE_TOKEN_STATEMENT(PutParser)			  },
 					{ "delete",				MAKE_TOKEN_STATEMENT(DeleteParser)		  },
@@ -81,7 +81,7 @@ namespace FreshCask
 			}
 			~Parser() {}
 
-			RetType Parse(const std::string& q)
+			RetType Parse(const std::string& q, ParamArray* out = nullptr)
 			{
 				if (q.empty()) return Fail("Empty statement");
 
@@ -90,7 +90,7 @@ namespace FreshCask
 				if (its == tokenStatements.end())
 					return Fail(std::string("Undeclared identifier: `") + verbs[0] + '`');
 			
-				return its->second(VerbArray(verbs.begin() + 1, verbs.end()));
+				return its->second(VerbArray(verbs.begin() + 1, verbs.end()), out);
 			}
 
 			RetType Bind(const std::string& token, BindStatement statement)
@@ -102,7 +102,7 @@ namespace FreshCask
 				if (!it->second.second) // not bind-able
 					return Fail("Token cannot be binded.");
 
-				tokenStatements[token] = std::bind(it->second.first, std::placeholders::_1, statement);
+				tokenStatements[token] = std::bind(it->second.first, std::placeholders::_1, statement, std::placeholders::_2);
 				return OK();
 			}
 
@@ -110,82 +110,44 @@ namespace FreshCask
 			static std::string ToString(RetType& ret) { return ret.second; }
 
 		private:
-			RetType ListParser(const VerbArray& q, BindStatement)
+			RetType ListParser(const VerbArray& q, BindStatement, ParamArray* out)
 			{
 				if (q.empty())
-					return Fail("Expected `database` after `list`");
+					return Fail("Expected `bucket` after `list`");
 
-				if (toLower(q[0]) != "database")
-					return Fail(std::string("Expected `database` rather than `") + q[0] + "` after `list`");
+				if (toLower(q[0]) != "bucket")
+					return Fail(std::string("Expected `bucket` rather than `") + q[0] + "` after `list`");
 
-				return tokenStatements["list database"](VerbArray(q.begin() + 1, q.end()));
+				return tokenStatements["list bucket"](VerbArray(q.begin() + 1, q.end()), out);
 			}
 
-			RetType ListDatabaseParser(const VerbArray& q, BindStatement s)
+			RetType ListBucketParser(const VerbArray& q, BindStatement s, ParamArray* out)
 			{
 				if (!q.empty()) // other chars after databse
-					return Fail(std::string("Unexpected verb `") + q[0] + "` after `database`");
+					return Fail(std::string("Unexpected verb `") + q[0] + "` after `bucket`");
 
-				if (s == nullptr)
-					return OK("No binded statement to parser `list database`.");
-				else
-					s(ParamArray());
-				
-				return OK();
+				if (s != nullptr) s(ParamArray());
+				if (out != nullptr) *out = ParamArray();
+				return OK("list bucket");
 			}
 
-			RetType SelectParser(const VerbArray& q, BindStatement)
+			RetType SelectParser(const VerbArray& q, BindStatement, ParamArray* out)
 			{
 				if (q.empty())
-					return Fail("Expected `database` after `select`");
+					return Fail("Expected `bucket` after `select`");
 
-				if (toLower(q[0]) != "database")
-					return Fail(std::string("Expected `database` rather than `") + q[0] + "` after `select`");
+				if (toLower(q[0]) != "bucket")
+					return Fail(std::string("Expected `bucket` rather than `") + q[0] + "` after `select`");
 
-				return tokenStatements["select database"](VerbArray(q.begin() + 1, q.end()));
+				return tokenStatements["select bucket"](VerbArray(q.begin() + 1, q.end()), out);
 			}
 
-			RetType SelectDatbaseParser(const VerbArray& q, BindStatement s)
+			RetType SelectBucketParser(const VerbArray& q, BindStatement s, ParamArray* out)
 			{
-				if (q.empty()) // we need database name
-					return Fail("Expected `<database name>` after `database`");
+				if (q.empty()) // we need bucket name
+					return Fail("Expected `<bucket name>` after `bucket`");
 
-				if (q.size() > 1) // other chars after <database name>
-					return Fail(std::string("Unexpected verb `") + q[1] + "` after `" + q[0] + "`");
-
-				static std::vector<char> invalidChar = {
-					0x5C, 0x2F, 0x3A, 0x2A, 0x3F, 0x22, 0x3C, 0x3E, 0x7C
-				};
-
-				for (auto& c : invalidChar)
-					if (q[0].find(c) != std::string::npos) // invalid char
-						return Fail(std::string("Invalid character: `") + c + "` in `" + q[0] + "`");
-				
-				if (s == nullptr)
-					return OK("No binded statement to parser `select database`.");
-				else
-					s(q);
-
-				return OK();
-			}
-
-			RetType CreateParser(const VerbArray& q, BindStatement)
-			{
-				if (q.empty())
-					return Fail("Expected `database` after `create`");
-
-				if (toLower(q[0]) != "database")
-					return Fail(std::string("Expected `database` rather than `") + q[0] + "` after `create`");
-
-				return tokenStatements["create database"](VerbArray(q.begin() + 1, q.end()));
-			}
-
-			RetType CreateDatbaseParser(const VerbArray& q, BindStatement s)
-			{
-				if (q.empty()) // we need database name
-					return Fail("Expected `<database name>` after `database`");
-
-				if (q.size() > 1) // other chars after <database name>
+				if (q.size() > 1) // other chars after <bucket name>
 					return Fail(std::string("Unexpected verb `") + q[1] + "` after `" + q[0] + "`");
 
 				static std::vector<char> invalidChar = {
@@ -196,31 +158,28 @@ namespace FreshCask
 					if (q[0].find(c) != std::string::npos) // invalid char
 						return Fail(std::string("Invalid character: `") + c + "` in `" + q[0] + "`");
 
-				if (s == nullptr)
-					return OK("No binded statement to parser `create database`.");
-				else
-					s(q);
-
-				return OK();
+				if (s != nullptr) s(q);
+				if (out != nullptr) *out = q;
+				return OK("select bucket");
 			}
 
-			RetType RemoveParser(const VerbArray& q, BindStatement)
+			RetType CreateParser(const VerbArray& q, BindStatement, ParamArray* out)
 			{
 				if (q.empty())
-					return Fail("Expected `database` after `remove`");
+					return Fail("Expected `bucket` after `create`");
 
-				if (toLower(q[0]) != "database")
-					return Fail(std::string("Expected `database` rather than `") + q[0] + "` after `remove`");
+				if (toLower(q[0]) != "bucket")
+					return Fail(std::string("Expected `bucket` rather than `") + q[0] + "` after `create`");
 
-				return tokenStatements["remove database"](VerbArray(q.begin() + 1, q.end()));
+				return tokenStatements["create bucket"](VerbArray(q.begin() + 1, q.end()), out);
 			}
 
-			RetType RemoveDatbaseParser(const VerbArray& q, BindStatement s)
+			RetType CreateBucketParser(const VerbArray& q, BindStatement s, ParamArray* out)
 			{
-				if (q.empty()) // we need database name
-					return Fail("Expected `<database name>` after `database`");
+				if (q.empty()) // we need bucket name
+					return Fail("Expected `<bucket name>` after `bucket`");
 
-				if (q.size() > 1) // other chars after <database name>
+				if (q.size() > 1) // other chars after <bucket name>
 					return Fail(std::string("Unexpected verb `") + q[1] + "` after `" + q[0] + "`");
 
 				static std::vector<char> invalidChar = {
@@ -231,15 +190,44 @@ namespace FreshCask
 					if (q[0].find(c) != std::string::npos) // invalid char
 						return Fail(std::string("Invalid character: `") + c + "` in `" + q[0] + "`");
 
-				if (s == nullptr)
-					return OK("No binded statement to parser `remove database`.");
-				else
-					s(q);
-
-				return OK();
+				if (s != nullptr) s(q);
+				if (out != nullptr) *out = q;
+				return OK("create bucket");
 			}
 
-			RetType GetParser(const VerbArray& q, BindStatement s)
+			RetType RemoveParser(const VerbArray& q, BindStatement, ParamArray* out)
+			{
+				if (q.empty())
+					return Fail("Expected `bucket` after `remove`");
+
+				if (toLower(q[0]) != "bucket")
+					return Fail(std::string("Expected `bucket` rather than `") + q[0] + "` after `remove`");
+
+				return tokenStatements["remove bucket"](VerbArray(q.begin() + 1, q.end()), out);
+			}
+
+			RetType RemoveBucketParser(const VerbArray& q, BindStatement s, ParamArray* out)
+			{
+				if (q.empty()) // we need bucket name
+					return Fail("Expected `<bucket name>` after `bucket`");
+
+				if (q.size() > 1) // other chars after <bucket name>
+					return Fail(std::string("Unexpected verb `") + q[1] + "` after `" + q[0] + "`");
+
+				static std::vector<char> invalidChar = {
+					0x5C, 0x2F, 0x3A, 0x2A, 0x3F, 0x22, 0x3C, 0x3E, 0x7C
+				};
+
+				for (auto& c : invalidChar)
+					if (q[0].find(c) != std::string::npos) // invalid char
+						return Fail(std::string("Invalid character: `") + c + "` in `" + q[0] + "`");
+
+				if (s != nullptr) s(q);
+				if (out != nullptr) *out = q;
+				return OK("remove bucket");
+			}
+
+			RetType GetParser(const VerbArray& q, BindStatement s, ParamArray* out)
 			{
 				if (q.empty())
 					return Fail("Expected `<key>` after `get`");
@@ -251,19 +239,15 @@ namespace FreshCask
 				RetType ret = dealQuotation(q[0], "Expected NOT NULL `<key>` after `get`", key);
 				if (!IsOK(ret)) return ret;
 
-				if (s == nullptr)
-					return OK("No binded statement to parser `get`.");
-				else
-				{
-					ParamArray ret;
-					ret.push_back(key);
-					s(ret);
-				}
-
-				return OK();
+				ParamArray param;
+				param.push_back(key);
+				
+				if (s != nullptr) s(param);
+				if (out != nullptr) *out = param;
+				return OK("get");
 			}
 
-			RetType PutParser(const VerbArray& q, BindStatement s)
+			RetType PutParser(const VerbArray& q, BindStatement s, ParamArray* out)
 			{
 				if (q.empty())
 					return Fail("Expected `<key>` after `put`");
@@ -283,20 +267,16 @@ namespace FreshCask
 				ret = dealQuotation(q[1], std::string("Expected NOT NULL `<value>` after `") + q[0] + "`", value);
 				if (!IsOK(ret)) return ret;
 
-				if (s == nullptr)
-					return OK("No binded statement to parser `put`.");
-				else
-				{
-					ParamArray ret;
-					ret.push_back(key);
-					ret.push_back(value);
-					s(ret);
-				}
+				ParamArray param;
+				param.push_back(key);
+				param.push_back(value);
 
-				return OK();
+				if (s != nullptr) s(param);
+				if (out != nullptr) *out = param;
+				return OK("put");
 			}
 
-			RetType DeleteParser(const VerbArray& q, BindStatement s)
+			RetType DeleteParser(const VerbArray& q, BindStatement s, ParamArray* out)
 			{
 				if (q.empty())
 					return Fail("Expected `<key>` after `delete`");
@@ -308,45 +288,35 @@ namespace FreshCask
 				RetType ret = dealQuotation(q[0], "Expected NOT NULL `<key>` after `get`", key);
 				if (!IsOK(ret)) return ret;
 
-				if (s == nullptr)
-					return OK("No binded statement to parser `delete`.");
-				else
-				{
-					ParamArray ret;
-					ret.push_back(key);
-					s(ret);
-				}
-
-				return OK();
+				ParamArray param;
+				param.push_back(key);
+				
+				if (s != nullptr) s(param);
+				if (out != nullptr) *out = param;
+				return OK("delete");
 			}
 
-			RetType EnumerateParser(const VerbArray& q, BindStatement s)
+			RetType EnumerateParser(const VerbArray& q, BindStatement s, ParamArray* out)
 			{
 				if (!q.empty()) // other chars after enumerate
 					return Fail(std::string("Unexpected verb `") + q[0] + "` after `enumerate`");
 
-				if (s == nullptr)
-					return OK("No binded statement to parser `enumerate`.");
-				else
-					s(ParamArray());
-
-				return OK();
+				if (s != nullptr) s(ParamArray());
+				if (out != nullptr) *out = ParamArray();
+				return OK("enumerate");
 			}
 
-			RetType CompactParser(const VerbArray& q, BindStatement s)
+			RetType CompactParser(const VerbArray& q, BindStatement s, ParamArray* out)
 			{
 				if (!q.empty()) // other chars after compact
 					return Fail(std::string("Unexpected verb `") + q[0] + "` after `compact`");
 
-				if (s == nullptr)
-					return OK("No binded statement to parser `compact`.");
-				else
-					s(ParamArray());
-
-				return OK();
+				if (s != nullptr) s(ParamArray());
+				if (out != nullptr) *out = ParamArray();
+				return OK("compact");
 			}
 
-			RetType ProcParser(const VerbArray& q, BindStatement)
+			RetType ProcParser(const VerbArray& q, BindStatement, ParamArray* out)
 			{
 				if (q.empty())
 					return Fail("Expected `begin` or `end` after `proc`");
@@ -355,35 +325,29 @@ namespace FreshCask
 					return Fail(std::string("Expected `begin` or `end` rather than `") + q[0] + "` after `proc`");
 
 				if (toLower(q[0]) == "begin")
-					return tokenStatements["proc begin"](VerbArray(q.begin() + 1, q.end()));
+					return tokenStatements["proc begin"](VerbArray(q.begin() + 1, q.end()), out);
 				else // end
-					return tokenStatements["proc end"](VerbArray(q.begin() + 1, q.end()));
+					return tokenStatements["proc end"](VerbArray(q.begin() + 1, q.end()), out);
 			}
 
-			RetType ProcBeginParser(const VerbArray& q, BindStatement s)
+			RetType ProcBeginParser(const VerbArray& q, BindStatement s, ParamArray* out)
 			{
 				if (!q.empty()) // other chars after `begin`
 					return Fail(std::string("Unexpected verb `") + q[0] + "` after `begin`");
 
-				if (s == nullptr)
-					return OK("No binded statement to parser `proc begin`.");
-				else
-					s(q);
-
-				return OK();
+				if (s != nullptr) s(ParamArray());
+				if (out != nullptr) *out = ParamArray();
+				return OK("proc begin");
 			}
 
-			RetType ProcEndParser(const VerbArray& q, BindStatement s)
+			RetType ProcEndParser(const VerbArray& q, BindStatement s, ParamArray* out)
 			{
 				if (!q.empty()) // other chars after `end`
 					return Fail(std::string("Unexpected verb `") + q[0] + "` after `end`");
-
-				if (s == nullptr)
-					return OK("No binded statement to parser `proc end`.");
-				else
-					s(q);
-
-				return OK();
+				
+				if (s != nullptr) s(ParamArray());
+				if (out != nullptr) *out = ParamArray();
+				return OK("proc end");
 			}
 
 		private:

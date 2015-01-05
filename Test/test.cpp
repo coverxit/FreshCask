@@ -30,17 +30,17 @@ void printHelp()
 void FQLTest()
 {
 	FreshCask::FQL::Parser parser;
-	parser.Bind("list database", [](FreshCask::FQL::Parser::ParamArray param){
-		std::cout << "list database :";
+	parser.Bind("list bucket", [](FreshCask::FQL::Parser::ParamArray param){
+		std::cout << "list bucket :";
 	});
-	parser.Bind("select database", [](FreshCask::FQL::Parser::ParamArray param){
-		std::cout << "select database " << param[0] << " :";
+	parser.Bind("select bucket", [](FreshCask::FQL::Parser::ParamArray param){
+		std::cout << "select bucket " << param[0] << " :";
 	});
-	parser.Bind("create database", [](FreshCask::FQL::Parser::ParamArray param){
-		std::cout << "create database " << param[0] << " :";
+	parser.Bind("create bucket", [](FreshCask::FQL::Parser::ParamArray param){
+		std::cout << "create bucket " << param[0] << " :";
 	});
-	parser.Bind("remove database", [](FreshCask::FQL::Parser::ParamArray param){
-		std::cout << "remove database " << param[0] << " :";
+	parser.Bind("remove bucket", [](FreshCask::FQL::Parser::ParamArray param){
+		std::cout << "remove bucket " << param[0] << " :";
 	});
 	parser.Bind("get", [](FreshCask::FQL::Parser::ParamArray param){
 		std::cout << "get " << param[0] << " :";
@@ -68,16 +68,16 @@ void FQLTest()
 		std::cout << FreshCask::FQL::Parser::ToString(parser.Parse(str)) << std::endl;
 	};
 
-	testParse("no"); testParse("list"); testParse("list no"); testParse("list database"); testParse("list database more");
-	testParse("select"); testParse("select no"); testParse("select database"); testParse("select database test_db");
-	testParse("select database invalid?name"); testParse("select database invalid/name"); testParse("select database invalid\"name");
-	testParse("select database test_db more"); testParse("select database invalid?name more"); testParse("select database invalid/name more");
-	testParse("create"); testParse("create no"); testParse("create database"); testParse("create database test_db");
-	testParse("create database invalid?name"); testParse("create database invalid/name"); testParse("create database invalid\"name");
-	testParse("create database test_db more"); testParse("create database invalid?name more"); testParse("create database invalid/name more");
-	testParse("remove"); testParse("remove no"); testParse("remove database"); testParse("remove database test_db");
-	testParse("remove database invalid?name"); testParse("remove database invalid/name"); testParse("remove database invalid\"name");
-	testParse("remove database test_db more"); testParse("remove database invalid?name more"); testParse("remove database invalid/name more");
+	testParse("no"); testParse("list"); testParse("list no"); testParse("list bucket"); testParse("list bucket more");
+	testParse("select"); testParse("select no"); testParse("select bucket"); testParse("select bucket test_db");
+	testParse("select bucket invalid?name"); testParse("select bucket invalid/name"); testParse("select bucket invalid\"name");
+	testParse("select bucket test_db more"); testParse("select bucket invalid?name more"); testParse("select bucket invalid/name more");
+	testParse("create"); testParse("create no"); testParse("create bucket"); testParse("create bucket test_db");
+	testParse("create bucket invalid?name"); testParse("create bucket invalid/name"); testParse("create bucket invalid\"name");
+	testParse("create bucket test_db more"); testParse("create bucket invalid?name more"); testParse("create bucket invalid/name more");
+	testParse("remove"); testParse("remove no"); testParse("remove bucket"); testParse("remove bucket test_db");
+	testParse("remove bucket invalid?name"); testParse("remove bucket invalid/name"); testParse("remove bucket invalid\"name");
+	testParse("remove bucket test_db more"); testParse("remove bucket invalid?name more"); testParse("remove bucket invalid/name more");
 	testParse("get"); testParse("get key"); testParse("get \"key"); testParse("get \"key\""); testParse("get \"key\" more");
 	testParse("get 'key"); testParse("get 'key'"); testParse("get 'key' more"); testParse("put"); testParse("put key");
 	testParse("put \"key"); testParse("put 'key"); testParse("put key value"); testParse("put \"key value"); testParse("put \"key\" value");
@@ -148,17 +148,17 @@ int main()
 			std::vector<std::string> commandVec;
 			bool procBegin = false, nestFlag = false;
 
-			parser.Bind("list database", [](FreshCask::FQL::Parser::ParamArray param){
-				std::cout << "list database" << std::endl;
+			parser.Bind("list bucket", [](FreshCask::FQL::Parser::ParamArray param){
+				std::cout << "list bucket" << std::endl;
 			});
-			parser.Bind("select database", [](FreshCask::FQL::Parser::ParamArray param){
-				std::cout << "select database " << param[0] << std::endl;
+			parser.Bind("select bucket", [](FreshCask::FQL::Parser::ParamArray param){
+				std::cout << "select bucket " << param[0] << std::endl;
 			});
-			parser.Bind("create database", [](FreshCask::FQL::Parser::ParamArray param){
-				std::cout << "create database " << param[0] << std::endl;
+			parser.Bind("create bucket", [](FreshCask::FQL::Parser::ParamArray param){
+				std::cout << "create bucket " << param[0] << std::endl;
 			});
-			parser.Bind("remove database", [](FreshCask::FQL::Parser::ParamArray param){
-				std::cout << "remove database " << param[0] << std::endl;
+			parser.Bind("remove bucket", [](FreshCask::FQL::Parser::ParamArray param){
+				std::cout << "remove bucket " << param[0] << std::endl;
 			});
 			parser.Bind("get", [&](FreshCask::FQL::Parser::ParamArray param){
 				FreshCask::SmartByteArray out;
@@ -213,7 +213,7 @@ int main()
 					FreshCask::FQL::Parser::RetType ret = syntaxCheck.Parse(q);
 					if (!FreshCask::FQL::Parser::IsOK(ret))
 					{
-						std::cout << FreshCask::FQL::Parser::ToString(parser.Parse(q)) << std::endl;
+						std::cout << FreshCask::FQL::Parser::ToString(ret) << std::endl;
 						procBegin = false;
 						commandVec.clear();
 					}
@@ -225,8 +225,9 @@ int main()
 				else
 				{
 					FreshCask::FQL::Parser::RetType ret = parser.Parse(q);
+
 					if (!FreshCask::FQL::Parser::IsOK(ret))
-						std::cout << FreshCask::FQL::Parser::ToString(parser.Parse(q)) << std::endl;
+						std::cout << FreshCask::FQL::Parser::ToString(ret) << std::endl;
 				}
 
 				if (procBegin) std::cout << "     ..  ";
