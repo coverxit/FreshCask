@@ -30,11 +30,17 @@ void printHelp()
 void FQLTest()
 {
 	FreshCask::FQL::Parser parser;
-	parser.Bind("list", [](FreshCask::FQL::Parser::ParamArray param){
+	parser.Bind("list database", [](FreshCask::FQL::Parser::ParamArray param){
 		std::cout << "list database :";
 	});
-	parser.Bind("select", [](FreshCask::FQL::Parser::ParamArray param){
+	parser.Bind("select database", [](FreshCask::FQL::Parser::ParamArray param){
 		std::cout << "select database " << param[0] << " :";
+	});
+	parser.Bind("create database", [](FreshCask::FQL::Parser::ParamArray param){
+		std::cout << "create database " << param[0] << " :";
+	});
+	parser.Bind("remove database", [](FreshCask::FQL::Parser::ParamArray param){
+		std::cout << "remove database " << param[0] << " :";
 	});
 	parser.Bind("get", [](FreshCask::FQL::Parser::ParamArray param){
 		std::cout << "get " << param[0] << " :";
@@ -51,8 +57,11 @@ void FQLTest()
 	parser.Bind("compact", [](FreshCask::FQL::Parser::ParamArray param){
 		std::cout << "compact :";
 	});
-	parser.Bind("proc", [](FreshCask::FQL::Parser::ParamArray param){
-		std::cout << "proc " << param[0] << " :";
+	parser.Bind("proc begin", [](FreshCask::FQL::Parser::ParamArray param){
+		std::cout << "proc begin :";
+	});
+	parser.Bind("proc end", [](FreshCask::FQL::Parser::ParamArray param){
+		std::cout << "proc end :";
 	});
 
 	auto testParse = [&](const std::string& str) {
@@ -63,6 +72,12 @@ void FQLTest()
 	testParse("select"); testParse("select no"); testParse("select database"); testParse("select database test_db");
 	testParse("select database invalid?name"); testParse("select database invalid/name"); testParse("select database invalid\"name");
 	testParse("select database test_db more"); testParse("select database invalid?name more"); testParse("select database invalid/name more");
+	testParse("create"); testParse("create no"); testParse("create database"); testParse("create database test_db");
+	testParse("create database invalid?name"); testParse("create database invalid/name"); testParse("create database invalid\"name");
+	testParse("create database test_db more"); testParse("create database invalid?name more"); testParse("create database invalid/name more");
+	testParse("remove"); testParse("remove no"); testParse("remove database"); testParse("remove database test_db");
+	testParse("remove database invalid?name"); testParse("remove database invalid/name"); testParse("remove database invalid\"name");
+	testParse("remove database test_db more"); testParse("remove database invalid?name more"); testParse("remove database invalid/name more");
 	testParse("get"); testParse("get key"); testParse("get \"key"); testParse("get \"key\""); testParse("get \"key\" more");
 	testParse("get 'key"); testParse("get 'key'"); testParse("get 'key' more"); testParse("put"); testParse("put key");
 	testParse("put \"key"); testParse("put 'key"); testParse("put key value"); testParse("put \"key value"); testParse("put \"key\" value");
@@ -131,11 +146,17 @@ int main()
 			std::vector<std::string> commandVec;
 			bool procBegin = false, nestFlag = false;
 
-			parser.Bind("list", [](FreshCask::FQL::Parser::ParamArray param){
+			parser.Bind("list database", [](FreshCask::FQL::Parser::ParamArray param){
 				std::cout << "list database" << std::endl;
 			});
-			parser.Bind("select", [](FreshCask::FQL::Parser::ParamArray param){
+			parser.Bind("select database", [](FreshCask::FQL::Parser::ParamArray param){
 				std::cout << "select database " << param[0] << std::endl;
+			});
+			parser.Bind("create database", [](FreshCask::FQL::Parser::ParamArray param){
+				std::cout << "create database " << param[0] << std::endl;
+			});
+			parser.Bind("remove database", [](FreshCask::FQL::Parser::ParamArray param){
+				std::cout << "remove database " << param[0] << std::endl;
 			});
 			parser.Bind("get", [&](FreshCask::FQL::Parser::ParamArray param){
 				FreshCask::SmartByteArray out;
@@ -160,20 +181,20 @@ int main()
 				doTest(bc.Compact());
 			});
 
-			auto procStatement = [&](FreshCask::FQL::Parser::ParamArray param){
-				if (param[0] == "begin")
-				{
-					if (procBegin) std::cout << "No nest of 'proc begin'" << std::endl, procBegin = false, nestFlag = true;
-					else procBegin = true;
-				}
-				else
-				{
-					if (!procBegin) std::cout << "No 'proc begin' before." << std::endl;
-					procBegin = false;
-				}
+			auto procBeginStatement = [&](FreshCask::FQL::Parser::ParamArray param){
+				if (procBegin) std::cout << "No nest of 'proc begin'" << std::endl, procBegin = false, nestFlag = true;
+				else procBegin = true;
 			};
-			parser.Bind("proc", procStatement);
-			syntaxCheck.Bind("proc", procStatement);
+			auto procEndStatement = [&](FreshCask::FQL::Parser::ParamArray param){
+				if (!procBegin) std::cout << "No 'proc begin' before." << std::endl;
+				procBegin = false;
+			};
+
+			parser.Bind("proc begin", procBeginStatement);
+			parser.Bind("proc end", procEndStatement);
+
+			syntaxCheck.Bind("proc begin", procBeginStatement);
+			syntaxCheck.Bind("proc end", procEndStatement);
 
 			std::string q;
 			std::cout << "FQL> ";
@@ -204,7 +225,7 @@ int main()
 						std::cout << FreshCask::FQL::Parser::ToString(parser.Parse(q)) << std::endl;
 				}
 
-				if (procBegin) std::cout << "     ..  5";
+				if (procBegin) std::cout << "     ..  ";
 				else 
 				{
 					if (!commandVec.empty())

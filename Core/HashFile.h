@@ -3,8 +3,6 @@
 
 #include <map>
 
-#include <Algorithm/MurmurHash3.hpp>
-
 namespace FreshCask
 {
 	namespace HashFile
@@ -22,17 +20,7 @@ namespace FreshCask
 				DataFileId(DataFileId), SizeOfValue(SizeOfValue), OffsetOfValue(OffsetOfValue), TimeStamp(TimeStamp) {}
 		};
 
-		typedef uint32_t HashType;
-		typedef std::map<HashType, std::pair<SmartByteArray, Record>> HashMap;
-
-		Status HashFunction(const SmartByteArray &bar, HashType& out)
-		{
-			if (bar.Size() == 0)
-				RET_BY_SENDER(Status::InvalidArgument("Input is null"), "HashFile::HashFunction()");
-
-			MurmurHash3_x86_32(bar.Data(), bar.Size(), HashSeed, &out);
-			RET_BY_SENDER(Status::OK(), "HashFile::HashFunction()");
-		}
+		typedef std::map<SmartByteArray, Record> HashTree;
 	} // namespace HashFile
 } // namespace FreshCask
 

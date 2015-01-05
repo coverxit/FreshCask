@@ -3,6 +3,8 @@
 
 #include <functional>
 
+#include <Algorithm/MurmurHash3.hpp>
+
 namespace FreshCask
 {
 	bool IsFileExist(const std::string& filePath)
@@ -86,6 +88,17 @@ namespace FreshCask
 		else RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "Utils::MakeDir()");
 #endif
 	}
+
+	typedef uint32_t HashType;
+	Status HashFunction(const SmartByteArray &bar, HashType& out)
+	{
+		if (bar.Size() == 0)
+			RET_BY_SENDER(Status::InvalidArgument("Input is null"), "HashFile::HashFunction()");
+
+		MurmurHash3_x86_32(bar.Data(), bar.Size(), HashFile::HashSeed, &out);
+		RET_BY_SENDER(Status::OK(), "HashFile::HashFunction()");
+	}
+
 } // namespace FreshCask
 
 #endif // __UTIL_MISC_HPP__

@@ -9,13 +9,12 @@ namespace FreshCask
 	const uint32_t CurrentMinorVersion = 0;
 
 	const bool EnableStatusTrackback = true;
+	const uint32_t DefaultLRUCacheSize = 3;
 
 	namespace DataFile 
 	{
 		const uint32_t DefaultMagicNumber = 0x46444346; // FCDF (FreshCask Data File)
 		const uint32_t MaxFileSize = (uint32_t)(1024 << 20); // 1 GB
-		const uint32_t MaxPageSize = (uint32_t)(4096 << 10); // 4 MB
-		const uint32_t BufferSize  = (uint32_t)(4096 << 10); // 4 MB
 
 		const std::string FileNameSuffix = ".fcdf";
 	} // namespace DataFile

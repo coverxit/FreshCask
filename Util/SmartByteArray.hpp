@@ -30,6 +30,8 @@ namespace FreshCask {
 		bool IsNull() { return size == 0 || data == nullptr; }
 		static SmartByteArray Null() { return SmartByteArray();  }
 
+		friend bool operator<(const SmartByteArray& lhs, const SmartByteArray& rhs) { return lhs.ToString() < rhs.ToString(); }
+
 	private:
 		struct senderAllocDeleter { // tricky, avoid being deleted by std::shared_ptr
 			void operator()(BytePtr) { /* do nothing */ }

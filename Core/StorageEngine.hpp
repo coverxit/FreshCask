@@ -17,8 +17,13 @@ namespace FreshCask
 		typedef std::map<uint32_t, std::shared_ptr<DataFileEngine>> DataFileEngineMap;
 
 	public:
-		StorageEngine(std::string bucketDir, HashFile::HashMap& hashMap) 
-			: bucketDir(bucketDir), hashMap(hashMap), lastFileId(0), dfActiveEngine(std::pair<uint32_t, DataFileEnginePtr>((uint32_t)-1, NULL)) {}
+		StorageEngine(std::string bucketDir, HashFile::HashTree& hashTree) 
+			: bucketDir(bucketDir), hashTree(hashTree), lastFileId(0), 
+#ifndef _M_CEE // fuck C++/CLI!!!
+			dfActiveEngine(std::pair<uint32_t, DataFileEnginePtr>((uint32_t)-1, nullptr)) {}
+#else
+			dfActiveEngine(std::pair<uint32_t, DataFileEnginePtr>((uint32_t)-1, __nullptr)) {}
+#endif
 		~StorageEngine() { Close(true); }
 
 		Status Open()
@@ -56,9 +61,9 @@ namespace FreshCask
 							else RET_BY_SENDER(s, "StorageEngine::Open()::ProcessFile()");
 						}
 							
-						HashFile::HashType hash;
-						RET_IFNOT_OK(HashFile::HashFunction(hfRec.Key, hash), "StorageEngine::Open()::ProcessFile()");
-						hashMap[hash] = std::make_pair(hfRec.Key, HashFile::Record(hfRec.Header.DataFileId, hfRec.Header.SizeOfValue, hfRec.Header.OffsetOfValue, hfRec.Header.TimeStamp));
+						//HashFile::HashType hash;
+						//RET_IFNOT_OK(HashFile::HashFunction(hfRec.Key, hash), "StorageEngine::Open()::ProcessFile()");
+						hashTree[hfRec.Key] = HashFile::Record(hfRec.Header.DataFileId, hfRec.Header.SizeOfValue, hfRec.Header.OffsetOfValue, hfRec.Header.TimeStamp);
 					}
 
 					RET_IFNOT_OK(engine.Close(), "StorageEngine::Open()::ProcessFile()");
@@ -80,7 +85,7 @@ namespace FreshCask
 					RET_IFNOT_OK(engine.second->Close(), "StorageEngine::Close()");
 
 				dfEngineMap.clear();
-				if (makeHintFile) RET_BY_SENDER(CreateHintFile(bucketDir, hashMap), "StorageEngine::Close()");
+				if (makeHintFile) RET_BY_SENDER(CreateHintFile(bucketDir, hashTree), "StorageEngine::Close()");
 			}
 
 			// that means already closed
@@ -134,18 +139,18 @@ namespace FreshCask
 		}
 
 	public:
-		static Status CreateHintFile(const std::string& bucketDir, const HashFile::HashMap &hashMap)
+		static Status CreateHintFile(const std::string& bucketDir, const HashFile::HashTree &hashMap)
 		{
 			HintFileEngine engine(HintFileEngine::OpenMode::Write, genHintFilePath(bucketDir));
 			RET_IFNOT_OK(engine.Open(), "StorageEngine::CreateHintFile()");
 
 			for (auto& item : hashMap)
 			{
-				HintFile::Record hfRec(item.second.first);
-				hfRec.Header.TimeStamp = item.second.second.TimeStamp;
-				hfRec.Header.SizeOfValue = item.second.second.SizeOfValue;
-				hfRec.Header.OffsetOfValue = item.second.second.OffsetOfValue;
-				hfRec.Header.DataFileId = item.second.second.DataFileId;
+				HintFile::Record hfRec(item.first);
+				hfRec.Header.TimeStamp = item.second.TimeStamp;
+				hfRec.Header.SizeOfValue = item.second.SizeOfValue;
+				hfRec.Header.OffsetOfValue = item.second.OffsetOfValue;
+				hfRec.Header.DataFileId = item.second.DataFileId;
 				RET_IFNOT_OK(engine.WriteRecord(hfRec), "StorageEngine::CreateHintFile()");
 			}
 
@@ -165,7 +170,7 @@ namespace FreshCask
 
 	private:
 		std::string bucketDir;
-		HashFile::HashMap& hashMap;
+		HashFile::HashTree& hashTree;
 
 		DataFileEngineMap dfEngineMap;
 		std::pair<uint32_t, DataFileEnginePtr> dfActiveEngine;
