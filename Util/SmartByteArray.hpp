@@ -2,6 +2,7 @@
 #define __UTIL_SMARTBYTEARRAY_HPP__
 
 #include <memory>
+
 namespace FreshCask {
 
 	class SmartByteArray
@@ -30,7 +31,12 @@ namespace FreshCask {
 		bool IsNull() { return size == 0 || data == nullptr; }
 		static SmartByteArray Null() { return SmartByteArray();  }
 
-		friend bool operator<(const SmartByteArray& lhs, const SmartByteArray& rhs) { return lhs.ToString() < rhs.ToString(); }
+		friend bool operator<(const SmartByteArray& lhs, const SmartByteArray& rhs)
+		{
+			if (lhs.Size() < rhs.Size()) return true;
+			else if (lhs.Size() > rhs.Size()) return false;
+			else return memcmp(lhs.Data(), rhs.Data(), lhs.Size()) < 0;
+		}
 
 	private:
 		struct senderAllocDeleter { // tricky, avoid being deleted by std::shared_ptr
