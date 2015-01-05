@@ -10,10 +10,10 @@ namespace FreshCask
 	class BucketManager
 	{
 	public:
-		typedef std::function<bool(const SmartByteArray&, const SmartByteArray&)> ExternalEnumeratorType;
+		typedef std::function<bool(const SmartByteArray&)> ExternalEnumeratorType;
 
 	private:
-		typedef std::function<Status(const SmartByteArray&, const SmartByteArray&)> InternalEnumeratorType;
+		typedef std::function<Status(const SmartByteArray&)> InternalEnumeratorType;
 
 	public:
 		BucketManager() : engine(nullptr) {}
@@ -153,20 +153,20 @@ namespace FreshCask
 		}
 
 		//************************************
-		// Method:    Enumerate
-		// FullName:  FreshCask::BucketManager::Enumerate
+		// Method:    ListKey
+		// FullName:  FreshCask::BucketManager::ListKey
 		// Access:    public 
 		// Returns:   Status
-		// Qualifier: Enumerate all <key, value> pairs
+		// Qualifier: List all keys
 		// Parameter: const ExternalEnumeratorType & func
 		//************************************
-		Status Enumerate(const ExternalEnumeratorType& func)
+		Status ListKey(const ExternalEnumeratorType& func)
 		{
 			if (!IsOpen())
-				RET_BY_SENDER(Status::IOError("Bucket not open"), "BucketManager::Enumerate()");
+				RET_BY_SENDER(Status::IOError("Bucket not open"), "BucketManager::ListKey()");
 
-			RET_BY_SENDER(listPairs([=](const SmartByteArray& key, const SmartByteArray& value) -> Status {
-				return Status(func(key, value));
+			RET_BY_SENDER(listKey([=](const SmartByteArray& key) -> Status {
+				return Status(func(key));
 			}), "BucketManager::Enumerate()");
 		}
 
@@ -188,8 +188,10 @@ namespace FreshCask
 			BucketManager tmpBucket;
 			RET_IFNOT_OK(MakeDir(tmpBucketDir.str()), "BucketManager::Compact()");
 			RET_IFNOT_OK(tmpBucket.Open(tmpBucketDir.str()), "BucketManager::Compact()");
-			RET_IFNOT_OK(this->listPairs([&](const SmartByteArray& key, const SmartByteArray& value) -> Status {
-				RET_BY_SENDER(tmpBucket.Put(key, value), "BucketManager::CompactEnumerator()");
+			RET_IFNOT_OK(this->listKey([&](const SmartByteArray& key) -> Status {
+				SmartByteArray value;
+				RET_IFNOT_OK(this->Get(key, value), "BucketManager::Compact()::Enumerator()");
+				RET_BY_SENDER(tmpBucket.Put(key, value), "BucketManager::Compact()::Enumerator()");
 			}), "BucketManager::Compact()");
 
 			RET_IFNOT_OK(this->Close(), "BucketManager::Compact()");
@@ -205,22 +207,19 @@ namespace FreshCask
 
 	private:
 		//************************************
-		// Method:    listPairs
-		// FullName:  FreshCask::BucketManager::listPairs
+		// Method:    listKey
+		// FullName:  FreshCask::BucketManager::listKey
 		// Access:    private 
 		// Returns:   Status
-		// Qualifier: Internal implement of Enumerate.
+		// Qualifier: Internal implement of ListKey.
 		// Parameter: const InternalEnumeratorType & func
 		//************************************
-		Status listPairs(const InternalEnumeratorType& func)
+		Status listKey(const InternalEnumeratorType& func)
 		{
 			for (auto& item : hashTree)
-			{
-				SmartByteArray value;
-				RET_IFNOT_OK(Get(item.first, value), "BucketManager::listPairs()");
-				RET_IFNOT_OK(func(item.first, value), "BucketManager::listPairs()");
-			}
-			RET_BY_SENDER(Status::OK(), "BucketManager::listPairs()");
+				RET_IFNOT_OK(func(item.first), "BucketManager::listKeys()");
+
+			RET_BY_SENDER(Status::OK(), "BucketManager::listKeys()");
 		}
 
 	private:

@@ -133,7 +133,9 @@ int main()
 		}
 		else if (input == "enumerate" || input == "e")
 		{
-			doTest( bc.Enumerate([](const FreshCask::SmartByteArray& key, const FreshCask::SmartByteArray& value) -> bool {
+			doTest( bc.ListKey([&](const FreshCask::SmartByteArray& key) -> bool {
+				FreshCask::SmartByteArray value;
+				doTest( bc.Get(key, value) );
 				std::cout << "Key: " << key.ToString() << ", Value: " << value.ToString() << std::endl;
 				return true;
 			}) );
@@ -172,7 +174,9 @@ int main()
 				doTest(bc.Delete(param[0]));
 			});
 			parser.Bind("enumerate", [&](FreshCask::FQL::Parser::ParamArray param){
-				doTest(bc.Enumerate([](const FreshCask::SmartByteArray& key, const FreshCask::SmartByteArray& value) -> bool {
+				doTest(bc.ListKey([&](const FreshCask::SmartByteArray& key) -> bool {
+					FreshCask::SmartByteArray value;
+					doTest(bc.Get(key, value));
 					std::cout << "Key: " << key.ToString() << ", Value: " << value.ToString() << std::endl;
 					return true;
 				}));
