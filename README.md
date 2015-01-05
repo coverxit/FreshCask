@@ -1,7 +1,7 @@
 FreshCask
 =========
 
-FreshCask is the *core* of FreshDB, which is a Bitcask based lightweight key-value database. 
+FreshCask is the *core* of FreshDB (<https://github.com/coverxit/FreshDB>), which is a Bitcask based lightweight key-value database. 
 
 Inspired by my friend's nickname, that's reason why it's called "FreshCask".
 
