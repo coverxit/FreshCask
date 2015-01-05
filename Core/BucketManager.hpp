@@ -24,7 +24,7 @@ namespace FreshCask
 		// FullName:  FreshCask::BucketManager::Open
 		// Access:    public 
 		// Returns:   Status
-		// Qualifier: Open a bucket
+		// Desc:      Open a bucket
 		// Parameter: const std::string & _bucketDir
 		//************************************
 		Status Open(const std::string &_bucketDir)
@@ -39,7 +39,7 @@ namespace FreshCask
 		// FullName:  FreshCask::BucketManager::IsOpen
 		// Access:    public 
 		// Returns:   bool
-		// Qualifier: Test if bucket is opened
+		// Desc:      Test if bucket is opened
 		//************************************
 		bool IsOpen()
 		{
@@ -52,7 +52,7 @@ namespace FreshCask
 		// FullName:  FreshCask::BucketManager::Close
 		// Access:    public 
 		// Returns:   Status
-		// Qualifier: Close bucket
+		// Desc:      Close bucket
 		// Parameter: bool makeHintFile
 		//************************************
 		Status Close(bool makeHintFile = true) 
@@ -71,7 +71,7 @@ namespace FreshCask
 		// FullName:  FreshCask::BucketManager::Get
 		// Access:    public 
 		// Returns:   Status
-		// Qualifier: Get value by a specific key
+		// Desc:      Get value by a specific key
 		// Parameter: const SmartByteArray & key
 		// Parameter: SmartByteArray & out
 		//************************************
@@ -102,7 +102,7 @@ namespace FreshCask
 		// FullName:  FreshCask::BucketManager::Put
 		// Access:    public 
 		// Returns:   Status
-		// Qualifier: Put a <key, value> pair into bucket
+		// Desc:      Put a <key, value> pair into bucket
 		// Parameter: const SmartByteArray & key
 		// Parameter: const SmartByteArray & value
 		//************************************
@@ -132,7 +132,7 @@ namespace FreshCask
 		// FullName:  FreshCask::BucketManager::Delete
 		// Access:    public 
 		// Returns:   Status
-		// Qualifier: Delete a <key, pair> by key
+		// Desc:      Delete a <key, pair> by key
 		// Parameter: const SmartByteArray & key
 		//************************************
 		Status Delete(const SmartByteArray& key)
@@ -157,7 +157,7 @@ namespace FreshCask
 		// FullName:  FreshCask::BucketManager::ListKey
 		// Access:    public 
 		// Returns:   Status
-		// Qualifier: List all keys
+		// Desc:      List all keys
 		// Parameter: const ExternalEnumeratorType & func
 		//************************************
 		Status ListKey(const ExternalEnumeratorType& func)
@@ -167,7 +167,7 @@ namespace FreshCask
 
 			RET_BY_SENDER(listKey([=](const SmartByteArray& key) -> Status {
 				return Status(func(key));
-			}), "BucketManager::Enumerate()");
+			}), "BucketManager::ListKey()");
 		}
 
 		//************************************
@@ -175,7 +175,7 @@ namespace FreshCask
 		// FullName:  FreshCask::BucketManager::Compact
 		// Access:    public 
 		// Returns:   Status
-		// Qualifier: Compact bucket
+		// Desc:      Compact bucket
 		//************************************
 		Status Compact()
 		{
@@ -203,6 +203,18 @@ namespace FreshCask
 #endif
 			RET_IFNOT_OK(RenameFile(tmpBucketDir.str(), bucketDir), "BucketManager::Compact()");
 			RET_BY_SENDER(this->Open(bucketDir), "BucketManager::Compact()");
+		}
+
+		//************************************
+		// Method:    PairCount
+		// FullName:  FreshCask::BucketManager::PairCount
+		// Access:    public 
+		// Returns:   size_t
+		// Desc:      return <key, value> pairs count
+		//************************************
+		size_t PairCount() const
+		{
+			return hashTree.size();
 		}
 
 	private:

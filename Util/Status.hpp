@@ -71,6 +71,7 @@ namespace FreshCask
 			return *this;
 		}
 
+		operator bool() { return IsOK(); }
 		bool IsOK() const { return code == cOK; }
 		bool IsNotFound() const { return code == cNotFound; }
 		bool IsInvaildArgument() const { return code == cInvalidArgument; }
