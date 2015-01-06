@@ -133,12 +133,15 @@ int main()
 		}
 		else if (input == "enumerate" || input == "e")
 		{
-			doTest( bc.ListKey([&](const FreshCask::SmartByteArray& key) -> bool {
+			std::vector<std::string> keys;
+			doTest(bc.Enumerate(keys));
+
+			for (auto& key : keys)
+			{
 				FreshCask::SmartByteArray value;
-				doTest( bc.Get(key, value) );
-				std::cout << "Key: " << key.ToString() << ", Value: " << value.ToString() << std::endl;
-				return true;
-			}) );
+				doTest(bc.Get(key, value));
+				std::cout << "Key: " << key << ", Value: " << value.ToString() << std::endl;
+			}
 		}
 		else if (input == "fqltest" || input == "f")
 		{
@@ -174,12 +177,15 @@ int main()
 				doTest(bc.Delete(param[0]));
 			});
 			parser.Bind("enumerate", [&](FreshCask::FQL::Parser::ParamArray param){
-				doTest(bc.ListKey([&](const FreshCask::SmartByteArray& key) -> bool {
+				std::vector<std::string> keys;
+				doTest(bc.Enumerate(keys));
+
+				for (auto& key : keys)
+				{
 					FreshCask::SmartByteArray value;
 					doTest(bc.Get(key, value));
-					std::cout << "Key: " << key.ToString() << ", Value: " << value.ToString() << std::endl;
-					return true;
-				}));
+					std::cout << "Key: " << key << ", Value: " << value.ToString() << std::endl;
+				}
 			});
 			parser.Bind("compact", [&](FreshCask::FQL::Parser::ParamArray param){
 				doTest(bc.Compact());

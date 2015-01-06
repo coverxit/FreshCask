@@ -9,9 +9,6 @@ namespace FreshCask
 {
 	class BucketManager
 	{
-	public:
-		typedef std::function<bool(const SmartByteArray&)> ExternalEnumeratorType;
-
 	private:
 		typedef std::function<Status(const SmartByteArray&)> InternalEnumeratorType;
 
@@ -58,12 +55,27 @@ namespace FreshCask
 		Status Close(bool makeHintFile = true) 
 		{
 			if (!IsOpen())
-				RET_BY_SENDER(Status::IOError("Bucket not open"), "BucketManager::Open()");
+				RET_BY_SENDER(Status::IOError("Bucket not open"), "BucketManager::Close()");
 			
 			RET_IFNOT_OK(engine->Close(makeHintFile), "BucketManager::Close()");
 			
 			engine.reset(); hashTree.clear();
 			RET_BY_SENDER(Status::OK(), "BucketManager::Close()");
+		}
+
+		//************************************
+		// Method:    Flush
+		// FullName:  FreshCask::BucketManager::Flush
+		// Access:    public 
+		// Returns:   Status
+		// Desc:      Flush hint file to disk
+		//************************************
+		Status Flush()
+		{
+			if (!IsOpen())
+				RET_BY_SENDER(Status::IOError("Bucket not open"), "BucketManager::Flush()");
+
+			RET_BY_SENDER(StorageEngine::CreateHintFile(bucketDir, hashTree), "StorageEngine::Close()");
 		}
 
 		//************************************
@@ -153,21 +165,22 @@ namespace FreshCask
 		}
 
 		//************************************
-		// Method:    ListKey
-		// FullName:  FreshCask::BucketManager::ListKey
+		// Method:    Enumerate
+		// FullName:  FreshCask::BucketManager::Enumerate
 		// Access:    public 
 		// Returns:   Status
-		// Desc:      List all keys
-		// Parameter: const ExternalEnumeratorType & func
+		// Desc:      Enumerate all keys
+		// Parameter: std::vector<std::string>&
 		//************************************
-		Status ListKey(const ExternalEnumeratorType& func)
+		Status Enumerate(std::vector<std::string>& out)
 		{
 			if (!IsOpen())
-				RET_BY_SENDER(Status::IOError("Bucket not open"), "BucketManager::ListKey()");
+				RET_BY_SENDER(Status::IOError("Bucket not open"), "BucketManager::Enumerate()");
 
-			RET_BY_SENDER(listKey([=](const SmartByteArray& key) -> Status {
-				return Status(func(key));
-			}), "BucketManager::ListKey()");
+			for (auto& item : hashTree)
+				out.push_back(item.first.ToString());
+
+			RET_BY_SENDER(Status::OK(), "BucketManager::Enumerate()");
 		}
 
 		//************************************
@@ -215,6 +228,19 @@ namespace FreshCask
 		size_t PairCount() const
 		{
 			return hashTree.size();
+		}
+
+		//************************************
+		// Method:    CotainsKey
+		// FullName:  FreshCask::BucketManager::CotainsKey
+		// Access:    public 
+		// Returns:   bool
+		// Desc:      Test if key exists
+		// Parameter: const SmartByteArray & Key
+		//************************************
+		bool CotainsKey(const SmartByteArray& Key)
+		{
+			return hashTree.find(Key) != hashTree.end();
 		}
 
 	private:
