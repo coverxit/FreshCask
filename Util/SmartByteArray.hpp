@@ -33,15 +33,7 @@ namespace FreshCask {
 
 		friend bool operator<(const SmartByteArray& lhs, const SmartByteArray& rhs)
 		{
-			size_t len = min(lhs.Size(), rhs.Size());
-			int cmp = memcmp(lhs.Data(), rhs.Data(), len);
-
-			if (cmp != 0) return cmp < 0;
-			else return lhs.Size() - rhs.Size() < 0;
-
-			/*if (lhs.Size() < rhs.Size()) return true;
-			else if (lhs.Size() > rhs.Size()) return false;
-			else return memcmp(lhs.Data(), rhs.Data(), lhs.Size()) < 0;*/
+			return lhs.ToString() < rhs.ToString();
 		}
 
 	private:
