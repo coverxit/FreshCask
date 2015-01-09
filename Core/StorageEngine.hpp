@@ -139,12 +139,12 @@ namespace FreshCask
 		}
 
 	public:
-		static Status CreateHintFile(const std::string& bucketDir, const HashFile::HashTree &hashMap)
+		static Status CreateHintFile(const std::string& bucketDir, const HashFile::HashTree &hashTree)
 		{
 			HintFileEngine engine(HintFileEngine::OpenMode::Write, genHintFilePath(bucketDir));
 			RET_IFNOT_OK(engine.Open(), "StorageEngine::CreateHintFile()");
 
-			for (auto& item : hashMap)
+			for (auto& item : hashTree)
 			{
 				HintFile::Record hfRec(item.first);
 				hfRec.Header.TimeStamp = item.second.TimeStamp;
