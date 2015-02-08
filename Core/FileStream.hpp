@@ -123,6 +123,9 @@ namespace FreshCask
 			LockGuard lock(writeMutex);
 
 #ifdef WIN32
+			if (INVALID_SET_FILE_POINTER == SetFilePointer(fileHandle, offset, NULL, FILE_BEGIN))
+				RET_BY_SENDER(Status::IOError("Failed to SetFilePointer"), "FileReader::Write()");
+
 			DWORD bytesWritten = 0;
 			if (FALSE == WriteFile(fileHandle, bar.Data(), bar.Size(), &bytesWritten, NULL) || bytesWritten != bar.Size())
 				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "FileWriter::Write()");
@@ -133,14 +136,14 @@ namespace FreshCask
 		Status WriteNext(const SmartByteArray& bar)
 		{
 			if (!IsOpen())
-				RET_BY_SENDER(Status::IOError("File not open"), "FileWriter::Write()");
+				RET_BY_SENDER(Status::IOError("File not open"), "FileWriter::WriteNext()");
 
 			LockGuard lock(writeMutex);
 
 #ifdef WIN32
 			DWORD bytesWritten = 0;
 			if (FALSE == WriteFile(fileHandle, bar.Data(), bar.Size(), &bytesWritten, NULL) || bytesWritten != bar.Size())
-				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "FileWriter::Write()");
+				RET_BY_SENDER(Status::IOError(ErrnoTranslator(GetLastError())), "FileWriter::WriteNext()");
 #endif
 			RET_BY_SENDER(Status::OK(), "FileWriter::WriteNext()");
 		}
