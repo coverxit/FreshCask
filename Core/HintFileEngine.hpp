@@ -75,8 +75,9 @@ namespace FreshCask
 		{
 			if (!IsOpen())
 				RET_BY_SENDER(Status::IOError("File not open."), "HintFileEngine::ReadRecord()");
-
-			RET_IFNOT_OK(reader->ReadNext(SmartByteArray((BytePtr)&hfRecOut.Header, sizeof(HintFile::RecordHeader))), "HintFileEngine::ReadRecord()");
+			
+			auto header = SmartByteArray((BytePtr)&hfRecOut.Header, sizeof(HintFile::RecordHeader));
+			RET_IFNOT_OK(reader->ReadNext(header), "HintFileEngine::ReadRecord()");
 
 			hfRecOut.Key = SmartByteArray(hfRecOut.Header.SizeOfKey);
 			RET_BY_SENDER(reader->ReadNext(hfRecOut.Key), "HintFileEngine::ReadRecord()");

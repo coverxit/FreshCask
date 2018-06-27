@@ -25,6 +25,7 @@ void printHelp()
 	std::cout << "(e)numerate - Enumerate all <key, value> pairs." << std::endl;
 	std::cout << "compac(t) - Compact bucket to increase performance." << std::endl;
 	std::cout << "(f)qltest - Test FQL." << std::endl;
+	std::cout << "(a)utotests - Automated Tests." << std::endl;
 }
 
 void FQLTest()
@@ -65,7 +66,8 @@ void FQLTest()
 	});
 
 	auto testParse = [&](const std::string& str) {
-		std::cout << FreshCask::FQL::Parser::ToString(parser.Parse(str)) << std::endl;
+		auto ret = parser.Parse(str);
+		std::cout << FreshCask::FQL::Parser::ToString(ret) << std::endl;
 	};
 
 	testParse("no"); testParse("list"); testParse("list no"); testParse("list bucket"); testParse("list bucket more");
@@ -142,6 +144,10 @@ int main()
 				doTest(bc.Get(key, value));
 				std::cout << "Key: " << key << ", Value: " << value.ToString() << std::endl;
 			}
+		}
+		else if (input == "autotests" || input == "a") 
+		{
+			FQLTest();
 		}
 		else if (input == "fqltest" || input == "f")
 		{
